@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -34,6 +35,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.vitune.android.BuildConfig
+import app.vitune.android.MainActivity
 import app.vitune.android.R
 import app.vitune.android.preferences.DataPreferences
 import app.vitune.android.service.ServiceNotifications
@@ -41,6 +43,7 @@ import app.vitune.android.ui.components.themed.CircularProgressIndicator
 import app.vitune.android.ui.components.themed.DefaultDialog
 import app.vitune.android.ui.components.themed.SecondaryTextButton
 import app.vitune.android.ui.screens.Route
+import app.vitune.android.utils.AppUpdateInstaller
 import app.vitune.android.utils.bold
 import app.vitune.android.utils.center
 import app.vitune.android.utils.hasPermission
@@ -55,13 +58,14 @@ import app.vitune.providers.github.GitHub
 import app.vitune.providers.github.models.Release
 import app.vitune.providers.github.requests.releases
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration
 import kotlin.time.toJavaDuration
 
 private val VERSION_NAME = BuildConfig.VERSION_NAME.substringBeforeLast("-")
 private const val REPO_OWNER = "hutch7575"
-private const val REPO_NAME = "ViTune-Classic"
+private const val REPO_NAME = "Ravyn-Music-Player"
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 private val permission = Manifest.permission.POST_NOTIFICATIONS
@@ -105,7 +109,7 @@ class VersionCheckWorker(
     }
 
     override suspend fun doWork(): Result = with(applicationContext) {
-        if (isAtLeastAndroid13 && !hasPermission(permission)) return Result.retry()
+        if (isAtLeastAndroid13 && !hasPermission(permission)) return Result.success()
 
         val result = withContext(Dispatchers.IO) {
             VERSION_NAME.version
@@ -118,12 +122,11 @@ class VersionCheckWorker(
                 this
                     .setSmallIcon(R.drawable.download)
                     .setContentTitle(getString(R.string.new_version_available))
-                    .setContentText(getString(R.string.redirect_github))
+                    .setContentText("Open Ravyn to download the new version")
                     .also {
-                        runCatching { release.frontendUrl.toString().toUri() }.getOrNull()
-                            ?.let { url ->
-                                it.setContentIntent(pendingIntent(Intent(Intent.ACTION_VIEW, url)))
-                            }
+                        it.setContentIntent(
+                            pendingIntent(Intent(applicationContext, MainActivity::class.java))
+                        )
                         it.setStyle(
                             NotificationCompat
                                 .BigTextStyle(it)
@@ -143,155 +146,170 @@ class VersionCheckWorker(
     }
 }
 
-private suspend fun Version.getNewerVersion(
-    repoOwner: String = REPO_OWNER,
-    repoName: String = REPO_NAME,
-    contentType: String = "application/vnd.android.package-archive"
-) = GitHub.releases(
-    owner = repoOwner,
-    repo = repoName
+private fun Release.installableApk(): Release.Asset? = assets.firstOrNull {
+    it.state == Release.Asset.State.Uploaded &&
+        it.name.endsWith(".apk", ignoreCase = true) &&
+        !it.name.contains("debug", ignoreCase = true) &&
+        !it.name.contains("nightly", ignoreCase = true)
+}
+
+private suspend fun Version.getNewerVersion(): Result<Release?>? = GitHub.releases(
+    owner = REPO_OWNER,
+    repo = REPO_NAME
 )?.mapCatching { releases ->
     releases
+        .filter { !it.draft && !it.preRelease && it.installableApk() != null }
         .sortedByDescending { it.publishedAt }
-        .firstOrNull { release ->
-            !release.draft &&
-                !release.preRelease &&
-                release.tag.version > this &&
-                release.assets.any {
-                    it.contentType == contentType && it.state == Release.Asset.State.Uploaded
-                }
-        }
+        .firstOrNull { it.tag.version > this }
 }
 
 @Route
 @Composable
 fun About() = SettingsCategoryScreen(
-    title = stringResource(R.string.about),
-    description = stringResource(
-        R.string.format_version_credits,
-        VERSION_NAME
-    )
+    title = "Ravyn",
+    description = "Version ${BuildConfig.VERSION_NAME} · Based on ViTune · GPL-3.0"
 ) {
     val [_, typography] = LocalAppearance.current
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    var hasPermission by remember(isCompositionLaunched()) {
+    var notificationPermission by remember(isCompositionLaunched()) {
         mutableStateOf(
             !isAtLeastAndroid13 || context.applicationContext.hasPermission(permission)
         )
     }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { notificationPermission = it }
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { hasPermission = it }
-    )
+    var checkingUpdates by rememberSaveable { mutableStateOf(false) }
+    var downloading by remember { mutableStateOf(false) }
+    var downloadError by remember { mutableStateOf<String?>(null) }
 
-    SettingsGroup(title = stringResource(R.string.social)) {
+    SettingsGroup(title = "Updates") {
         SettingsEntry(
-            title = stringResource(R.string.github),
-            text = stringResource(R.string.view_source),
+            title = "Check for updates",
+            text = "Check Ravyn releases · ${BuildConfig.VERSION_NAME}",
             onClick = {
-                uriHandler.openUri("https://github.com/$REPO_OWNER/$REPO_NAME")
+                checkingUpdates = true
+                downloadError = null
             }
         )
-    }
-
-    SettingsGroup(title = stringResource(R.string.contact)) {
-        SettingsEntry(
-            title = stringResource(R.string.report_bug),
-            text = stringResource(R.string.report_bug_description),
-            onClick = {
-                uriHandler.openUri(
-                    @Suppress("MaximumLineLength")
-                    "https://github.com/$REPO_OWNER/$REPO_NAME/issues/new?assignees=&labels=bug&template=bug_report.yaml"
-                )
-            }
-        )
-
-        SettingsEntry(
-            title = stringResource(R.string.request_feature),
-            text = stringResource(R.string.redirect_github),
-            onClick = {
-                uriHandler.openUri(
-                    @Suppress("MaximumLineLength")
-                    "https://github.com/$REPO_OWNER/$REPO_NAME/issues/new?assignees=&labels=enhancement&template=feature_request.md"
-                )
-            }
-        )
-    }
-
-    var newVersionDialogOpened by rememberSaveable { mutableStateOf(false) }
-
-    SettingsGroup(title = stringResource(R.string.version)) {
-        SettingsEntry(
-            title = stringResource(R.string.check_new_version),
-            text = stringResource(R.string.current_version, VERSION_NAME),
-            onClick = { newVersionDialogOpened = true }
-        )
-
         EnumValueSelectorSettingsEntry(
             title = stringResource(R.string.version_check),
             selectedValue = DataPreferences.versionCheckPeriod,
-            onValueSelect = onSelect@{
+            onValueSelect = {
                 DataPreferences.versionCheckPeriod = it
-                if (isAtLeastAndroid13 && it.period != null && !hasPermission) {
-                    launcher.launch(permission)
+                if (isAtLeastAndroid13 && it.period != null && !notificationPermission) {
+                    permissionLauncher.launch(permission)
                 }
-
                 VersionCheckWorker.upsert(context.applicationContext, it.period)
             },
             valueText = { it.displayName() }
         )
+        if (BuildConfig.DEBUG) SettingsDescription(
+            text = "This is a debug test build. It uses a separate app ID and signing key. " +
+                "In-app APK installation will work with consistently signed production releases.",
+            important = true
+        )
     }
 
-    if (newVersionDialogOpened) {
-        DefaultDialog(
-            onDismiss = { newVersionDialogOpened = false }
-        ) {
-            var newerVersion: Result<Release?>? by remember { mutableStateOf(null) }
+    SettingsGroup(title = "Project") {
+        SettingsEntry(
+            title = stringResource(R.string.github),
+            text = "Source code and releases",
+            onClick = { uriHandler.openUri("https://github.com/$REPO_OWNER/$REPO_NAME") }
+        )
+        SettingsEntry(
+            title = stringResource(R.string.report_bug),
+            text = "Report an issue with Ravyn",
+            onClick = { uriHandler.openUri("https://github.com/$REPO_OWNER/$REPO_NAME/issues/new") }
+        )
+        SettingsDescription(
+            text = "Ravyn is based on ViTune and retains the work and licenses " +
+                "of its original contributors. Not affiliated with Google or YouTube."
+        )
+    }
 
-            LaunchedEffect(Unit) {
-                withContext(Dispatchers.IO) {
-                    newerVersion = VERSION_NAME.version
-                        .getNewerVersion()
-                        ?.onFailure(Throwable::printStackTrace)
-                }
+    if (checkingUpdates) DefaultDialog(onDismiss = { if (!downloading) checkingUpdates = false }) {
+        var newest by remember { mutableStateOf<Result<Release?>?>(null) }
+
+        LaunchedEffect(Unit) {
+            newest = withContext(Dispatchers.IO) {
+                VERSION_NAME.version.getNewerVersion()
+                    ?: Result.failure(IllegalStateException("Could not reach GitHub"))
             }
+        }
 
-            newerVersion?.getOrNull()?.let {
+        val release = newest?.getOrNull()
+        if (release != null) {
+            BasicText(
+                text = "Ravyn ${release.tag} is available",
+                style = typography.m.bold.center,
+                modifier = Modifier.padding(16.dp)
+            )
+            if (BuildConfig.DEBUG) {
                 BasicText(
-                    text = stringResource(R.string.new_version_available),
-                    style = typography.xs.semiBold.center
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                BasicText(
-                    text = it.name ?: it.tag,
-                    style = typography.m.bold.center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                SecondaryTextButton(
-                    text = stringResource(R.string.more_information),
-                    onClick = { uriHandler.openUri(it.frontendUrl.toString()) }
-                )
-            } ?: newerVersion?.exceptionOrNull()?.let {
-                BasicText(
-                    text = stringResource(R.string.error_github),
-                    style = typography.xs.semiBold.center,
-                    modifier = Modifier.padding(all = 24.dp)
-                )
-            } ?: if (newerVersion?.isSuccess == true) {
-                BasicText(
-                    text = stringResource(R.string.up_to_date),
-                    style = typography.xs.semiBold.center
+                    text = "Test builds can't be updated using production APKs. " +
+                        "Use GitHub Actions for test builds.",
+                    style = typography.xs.center,
+                    modifier = Modifier.padding(12.dp)
                 )
             } else {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                SecondaryTextButton(
+                    text = if (downloading) "Downloading update…" else "Download and install",
+                    onClick = {
+                        val asset = release.installableApk() ?: return@SecondaryTextButton
+                        if (!AppUpdateInstaller.canInstall(context)) {
+                            downloadError = "Allow updates from this app in Android settings, then try again."
+                            runCatching { AppUpdateInstaller.requestInstallPermission(context) }
+                            return@SecondaryTextButton
+                        }
+                        downloading = true
+                        downloadError = null
+                        scope.launch {
+                            AppUpdateInstaller.download(
+                                context.applicationContext,
+                                asset.downloadUrl.toString()
+                            ).onSuccess { uri ->
+                                runCatching { AppUpdateInstaller.launchInstaller(context, uri) }
+                                    .onFailure { downloadError = it.message ?: "Could not open Android installer" }
+                            }.onFailure {
+                                downloadError = it.message ?: "Unable to download the update"
+                            }
+                            downloading = false
+                        }
+                    },
+                    enabled = !downloading
+                )
             }
+            SecondaryTextButton(
+                text = stringResource(R.string.more_information),
+                onClick = { uriHandler.openUri(release.frontendUrl.toString()) }
+            )
+        } else if (newest == null) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+        } else if (newest?.isFailure == true) {
+            BasicText(
+                text = "Couldn't check GitHub for updates. Please try again later.",
+                style = typography.xs.center,
+                modifier = Modifier.padding(16.dp)
+            )
+        } else {
+            BasicText(
+                text = "You're up to date. No newer Ravyn release is available yet.",
+                style = typography.xs.center,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+
+        downloadError?.let {
+            BasicText(
+                text = it,
+                style = typography.xs.center,
+                modifier = Modifier.padding(16.dp)
+            )
         }
     }
 }

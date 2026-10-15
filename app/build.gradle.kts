@@ -20,7 +20,7 @@ android {
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
-        applicationId = "app.vitune.classic"
+        applicationId = "app.ravyn.music"
 
         minSdk = 24
         targetSdk = 37
@@ -47,11 +47,17 @@ android {
         abi {
             isEnable = true
             reset()
-            isUniversalApk = false
+            isUniversalApk = true
         }
     }
 
     signingConfigs {
+        create("release") {
+            storeFile = System.getenv("ANDROID_RELEASE_KEYSTORE")?.let { file(it) }
+            storePassword = System.getenv("ANDROID_RELEASE_STORE_PASSWORD")
+            keyAlias = System.getenv("ANDROID_RELEASE_KEY_ALIAS")
+            keyPassword = System.getenv("ANDROID_RELEASE_KEY_PASSWORD")
+        }
         create("ci") {
             storeFile = System.getenv("ANDROID_NIGHTLY_KEYSTORE")?.let { file(it) }
             storePassword = System.getenv("ANDROID_NIGHTLY_KEYSTORE_PASSWORD")
@@ -64,14 +70,17 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-DEBUG"
-            manifestPlaceholders["appName"] = "ViTune Classic Debug"
+            manifestPlaceholders["appName"] = "Ravyn Debug"
         }
 
         release {
+            if (System.getenv("ANDROID_RELEASE_KEYSTORE") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             versionNameSuffix = "-RELEASE"
             isMinifyEnabled = true
             isShrinkResources = true
-            manifestPlaceholders["appName"] = "ViTune Classic"
+            manifestPlaceholders["appName"] = "Ravyn"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -84,7 +93,7 @@ android {
 
             applicationIdSuffix = ".nightly"
             versionNameSuffix = "-NIGHTLY"
-            manifestPlaceholders["appName"] = "ViTune Classic Nightly"
+            manifestPlaceholders["appName"] = "Ravyn Nightly"
             signingConfig = signingConfigs.findByName("ci")
         }
     }
