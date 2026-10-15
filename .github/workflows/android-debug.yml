@@ -6,6 +6,7 @@ on:
       - feat/settings-and-in-app-updates
       - feat/ravyn-now-playing
       - fix/playback-and-ui-smoothness
+      - feat/2016-navigation-playlists-player
       - master
   workflow_dispatch:
 
