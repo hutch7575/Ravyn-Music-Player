@@ -528,7 +528,21 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         super.onPlayerError(error)
 
         val httpCode = error.findCause<InvalidResponseCodeException>()?.responseCode
-        // Refresh stale URLs and retry a limited number of times.
+        val duration = player.duration
+        val isNearEnd = duration > 0L && duration != C.TIME_UNSET &&
+            player.currentPosition >= (duration - 6_000L).coerceAtLeast(0L)
+
+        // Some audio CDNs return HTTP 416 rather than EOF at the very end.
+        // Treat that case like finishing the track, instead of leaving the
+        // player stranded in STATE_IDLE with a playback-error overlay.
+        if (httpCode == 416 && isNearEnd && player.hasNextMediaItem()) {
+            player.seekToNextMediaItem()
+            if (player.playbackState == Player.STATE_IDLE) player.prepare()
+            player.play()
+            return
+        }
+
+        // Expired audio URLs are recoverable; refresh at most twice.
         if (httpCode in listOf(403, 410, 416) && playbackRecoveryAttempts < 2) {
             playbackRecoveryAttempts++
             streamUriCache.clear()
@@ -541,6 +555,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
         val prev = player.currentMediaItem ?: return
         player.seekToNextMediaItem()
+        if (player.playbackState == Player.STATE_IDLE) player.prepare()
+        player.play()
 
         ServiceNotifications.autoSkip.sendNotification(this) {
             this
@@ -1336,7 +1352,6 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
     companion object {
         private const val DEFAULT_CACHE_DIRECTORY = "exoplayer"
-        private const val DEFAULT_CHUNK_LENGTH = 1024 * 1024L
 
         fun createDatabaseProvider(context: Context) = StandaloneDatabaseProvider(context)
         fun createCache(
@@ -1360,7 +1375,6 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         fun createYouTubeDataSourceResolverFactory(
             context: Context,
             cache: Cache,
-            chunkLength: Long? = DEFAULT_CHUNK_LENGTH,
             findMediaItem: suspend (videoId: String) -> MediaItem? = { null },
             uriCache: UriCache<String, Long?> = UriCache()
         ): DataSource.Factory = ResolvingDataSource.Factory(
@@ -1373,25 +1387,15 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
             val mediaId = dataSpec.key?.removePrefix("https://youtube.com/watch?v=")
                 ?: error("A key must be set")
 
-            fun DataSpec.ranged(contentLength: Long?): DataSpec {
-                if (chunkLength == null || contentLength == null) return this
-                // Media3 generates HTTP Range headers from DataSpec.position and length.
-                val remaining = contentLength - position
-                if (remaining <= 0L) return this
-                val requested = length.takeIf { it > 0L } ?: chunkLength
-                return buildUpon().setLength(minOf(remaining, requested, chunkLength)).build()
-            }
-
+            // Only trust sizes verified by Media3's completed cache entries, not
+            // yt-dlp's remote filesize. Reported CDN sizes may not match the
+            // final stream, producing HTTP 416 errors near EOF or after seeking.
             val cachedContentLength = ContentMetadata
                 .getContentLength(cache.getContentMetadata(mediaId))
                 .takeIf { it != C.LENGTH_UNSET.toLong() }
-                ?: uriCache[mediaId]?.meta
-            val remaining = cachedContentLength?.minus(dataSpec.position)
-            val requestedLength = dataSpec.length.takeIf { it > 0L } ?: chunkLength
-            val cachedLength = requestedLength?.let { size ->
-                remaining?.let { minOf(size, it) } ?: size
-            }
-            val isAlreadyCached = cachedLength != null && cachedLength > 0L &&
+            val cachedLength = dataSpec.length.takeIf { it > 0L }
+                ?: cachedContentLength?.minus(dataSpec.position)?.takeIf { it > 0L }
+            val isAlreadyCached = cachedLength != null &&
                 cache.isCached(mediaId, dataSpec.position, cachedLength)
 
             if (dataSpec.isLocal || isAlreadyCached) {
@@ -1400,9 +1404,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                 uriCache[mediaId]
                     ?.takeIf { System.currentTimeMillis() - it.createdAtMillis < 15 * 60_000L }
                     ?.let { cachedUri ->
-                    dataSpec
-                        .withUri(cachedUri.uri)
-                        .ranged(cachedUri.meta)
+                    dataSpec.withUri(cachedUri.uri)
                 } ?: run {
                     // Only extraction is required to start the audio stream. The
                     // old implementation made up to four Innertube requests first,
@@ -1455,13 +1457,12 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                         uri = uri
                     )
 
-                    dataSpec
-                        .withUri(uri)
-                        .ranged(streamSize)
+                    // Preserve Media3's requested byte range and allow the HTTP
+                    // response to determine the actual EOF. Synthetic fixed-size
+                    // reads caused seek/end-of-track playback failures.
+                    dataSpec.withUri(uri)
                 }
             }
-        }.handleUnknownErrors {
-            uriCache.clear()
-        }
+        }.handleUnknownErrors()
     }
 }

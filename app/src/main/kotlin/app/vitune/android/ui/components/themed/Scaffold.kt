@@ -1,13 +1,12 @@
 package app.vitune.android.ui.components.themed
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection.Companion.Down
-import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection.Companion.Up
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.VisibilityThreshold
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +15,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.IntOffset
 import app.vitune.android.R
 import app.vitune.android.preferences.UIStatePreferences
 import app.vitune.core.ui.LocalAppearance
@@ -55,19 +53,13 @@ fun Scaffold(
 
         AnimatedContent(
             targetState = tabIndex,
+            // Composing and sliding two full-screen pages with a slow spring
+            // caused stutters on heavy library lists. Keep just a short
+            // Material-era crossfade; don't animate the page's layout size.
             transitionSpec = {
-                val slideDirection = if (targetState > initialState) Up else Down
-                val animationSpec = spring(
-                    dampingRatio = 0.9f,
-                    stiffness = Spring.StiffnessLow,
-                    visibilityThreshold = IntOffset.VisibilityThreshold
-                )
-
-                ContentTransform(
-                    targetContentEnter = slideIntoContainer(slideDirection, animationSpec),
-                    initialContentExit = slideOutOfContainer(slideDirection, animationSpec),
-                    sizeTransform = null
-                )
+                (fadeIn(tween(155, easing = FastOutSlowInEasing)))
+                    .togetherWith(fadeOut(tween(90)))
+                    .using(androidx.compose.animation.SizeTransform(clip = false, sizeAnimationSpec = { _, _ -> androidx.compose.animation.core.snap() }))
             },
             content = content,
             label = ""

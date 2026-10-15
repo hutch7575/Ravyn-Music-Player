@@ -82,7 +82,8 @@ fun SeekBar(
     var scrubbingPosition by remember(media) { mutableStateOf<Long?>(null) }
     val animatedPosition by animateFloatAsState(
         targetValue = scrubbingPosition?.toFloat() ?: position.toFloat(),
-        label = ""
+        animationSpec = tween(durationMillis = 180, easing = LinearEasing),
+        label = "Playback position"
     )
 
     var isDragging by remember { mutableStateOf(false) }

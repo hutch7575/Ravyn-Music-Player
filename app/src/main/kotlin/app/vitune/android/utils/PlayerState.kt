@@ -41,7 +41,9 @@ fun Player?.DisposableListener(
 ) {
     val currentListenerProvider by rememberUpdatedState(listenerProvider)
 
-    DisposableEffect(key, currentListenerProvider, this) {
+    // Lambda identity can change during recomposition: don't tear down and
+    // recreate a Media3 listener for every UI frame or playback tick.
+    DisposableEffect(key, this) {
         this@DisposableListener?.run {
             val listener = PlayerScope(this).currentListenerProvider()
 
@@ -61,14 +63,14 @@ fun Player?.DisposableListener(
 fun Player?.positionAndDurationState(
     delay: Duration = 500.milliseconds
 ): Pair<Long, Long> {
-    var state by remember {
+    var state by remember(this) {
         mutableStateOf(this?.let { currentPosition to duration } ?: (0L to 1L))
     }
 
     DisposableListener {
         object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                state = player.currentPosition to state.second
+                state = player.currentPosition to player.duration
             }
 
             override fun onPositionDiscontinuity(
@@ -100,8 +102,8 @@ typealias WindowState = Pair<Timeline.Window?, PlaybackException?>
 fun windowState(
     binder: PlayerService.Binder? = LocalPlayerServiceBinder.current
 ): WindowState {
-    var window by remember { mutableStateOf(binder?.player?.currentWindow) }
-    var error by remember { mutableStateOf<PlaybackException?>(binder?.player?.playerError) }
+    var window by remember(binder) { mutableStateOf(binder?.player?.currentWindow) }
+    var error by remember(binder) { mutableStateOf<PlaybackException?>(binder?.player?.playerError) }
     val state by remember {
         derivedStateOf(
             policy = object : SnapshotMutationPolicy<WindowState> {
