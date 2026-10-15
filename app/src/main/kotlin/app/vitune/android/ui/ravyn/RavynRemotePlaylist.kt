@@ -108,3 +108,72 @@ fun RavynRemotePlaylist(
         }
     }
 }
+
+
+/** Piped collections display Media3 items, not Innertube song items. */
+@Composable
+fun RavynMediaPlaylist(
+    title: String, artwork: String?, media: List<androidx.media3.common.MediaItem>,
+    onBack: () -> Unit,
+    onPlay: (Int) -> Unit,
+    onShuffle: () -> Unit,
+    onQueue: () -> Unit
+) {
+    val insets = LocalPlayerAwareWindowInsets.current
+        .only(WindowInsetsSides.Vertical).asPaddingValues()
+    Column(Modifier.fillMaxSize().background(RavynStyle.background)
+        .padding(top = insets.calculateTopPadding(),
+            bottom = insets.calculateBottomPadding())) {
+        Row(verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 8.dp)) {
+            RavynIcon(R.drawable.chevron_back, "Back", onBack)
+            RavynLabel("PLAYLIST", 12, RavynStyle.secondary, bold = true,
+                modifier = Modifier.weight(1f))
+            RavynIcon(R.drawable.enqueue, "Add to queue", onQueue)
+        }
+        LazyColumn {
+            item {
+                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+                    RavynArtwork(artwork, Modifier.size(207.dp))
+                    Spacer(Modifier.height(18.dp))
+                    RavynLabel(title, 24, bold = true, lines = 2)
+                    Spacer(Modifier.height(9.dp))
+                    RavynLabel(media.size.toString() + " songs",
+                        12, RavynStyle.secondary)
+                    Spacer(Modifier.height(17.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        RavynPill("Shuffle", false, onShuffle)
+                        RavynPill("Play all", true) {
+                            if (media.isNotEmpty()) onPlay(0)
+                        }
+                    }
+                }
+                RavynSection("Songs", Modifier.padding(horizontal = 18.dp))
+                Spacer(Modifier.height(10.dp))
+            }
+            itemsIndexed(media, key = { _, item -> item.mediaId }) { index, item ->
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(71.dp)
+                        .clickable { onPlay(index) }.padding(horizontal = 18.dp)) {
+                    RavynArtwork(item.mediaMetadata.artworkUri?.toString(),
+                        Modifier.size(53.dp))
+                    Column(Modifier.weight(1f)) {
+                        RavynLabel(item.mediaMetadata.title?.toString().orEmpty(),
+                            14, bold = true)
+                        RavynLabel(item.mediaMetadata.artist?.toString().orEmpty(),
+                            12, RavynStyle.secondary)
+                    }
+                    Image(painterResource(R.drawable.play), "Play",
+                        colorFilter = ColorFilter.tint(RavynStyle.secondary),
+                        modifier = Modifier.size(19.dp))
+                }
+            }
+            if (media.isEmpty()) item {
+                RavynLabel("Loading playlist...", 13, RavynStyle.secondary,
+                    modifier = Modifier.padding(20.dp))
+            }
+        }
+    }
+}
