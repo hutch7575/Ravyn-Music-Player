@@ -1419,6 +1419,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                     }.getOrElse { throw UnplayableException(it) }
                     if (info.id != mediaId) throw VideoIdMismatchException()
                     val format = info.formats?.firstOrNull { it.formatId == info.formatId }
+                    val streamSize = info.fileSize ?: info.approximateFileSize
 
                     val uri =
                         runCatching { info.url?.toUri() }.getOrNull() ?: throw UnplayableException()
@@ -1452,7 +1453,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                                     mimeType = youtubeFormat?.mimeType,
                                     bitrate = format?.abr?.let { it * 1000 }?.toLong(),
                                     loudnessDb = body?.playerConfig?.audioConfig?.normalizedLoudnessDb,
-                                    contentLength = info.fileSize,
+                                    contentLength = streamSize,
                                     lastModified = youtubeFormat?.lastModified
                                 )
                             )
@@ -1461,13 +1462,13 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
                     uriCache.push(
                         key = mediaId,
-                        meta = info.fileSize,
+                        meta = streamSize,
                         uri = uri
                     )
 
                     dataSpec
                         .withUri(uri)
-                        .ranged(info.fileSize)
+                        .ranged(streamSize)
                 }
             }
         }.handleUnknownErrors {
