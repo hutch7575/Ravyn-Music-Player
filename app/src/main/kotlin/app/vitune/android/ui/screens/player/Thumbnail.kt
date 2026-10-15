@@ -167,6 +167,7 @@ fun Thumbnail(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(if (isInPip) RectangleShape else thumbnailShape)
+                .background(colorPalette.background0)
                 .shadow(
                     elevation = shadowElevation,
                     shape = thumbnailShape,
@@ -223,7 +224,6 @@ fun Thumbnail(
                     }
                     .align(Alignment.Center)
                     .fillMaxWidth()
-                    .background(colorPalette.background0)
                     .let {
                         if (blurRadius == 0.dp) it else it.blur(radius = blurRadius)
                     }
@@ -243,7 +243,8 @@ fun Thumbnail(
                 modifier = Modifier.height(height.px.dp),
                 shouldShowSynchronizedLyrics = shouldShowSynchronizedLyrics,
                 setShouldShowSynchronizedLyrics = setShouldShowSynchronizedLyrics,
-                showControls = showLyricsControls
+                showControls = showLyricsControls,
+                ravynStyle = !isInPip
             )
 
             StatsForNerds(
