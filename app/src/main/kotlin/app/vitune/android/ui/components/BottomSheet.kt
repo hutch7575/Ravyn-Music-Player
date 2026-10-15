@@ -129,12 +129,15 @@ internal constructor(
         initialValue = initialValue,
         typeConverter = Dp.VectorConverter
     )
-    val value by animatable.asState()
+    // Update finger movement in the current frame, not via a new coroutine
+    // for every pointer event. Only snap the Animatable when settling.
+    private var dragValue by mutableStateOf<Dp?>(null)
+    val value get() = dragValue ?: animatable.value
 
     private val draggableState = DraggableState { delta ->
-        coroutineScope.launch {
-            animatable.snapTo(animatable.value - with(density) { delta.toDp() })
-        }
+        val current = dragValue ?: animatable.value
+        dragValue = (current - with(density) { delta.toDp() })
+            .coerceIn(dismissedBound, expandedBound)
     }
 
     override suspend fun drag(dragPriority: MutatePriority, block: suspend DragScope.() -> Unit) =
@@ -154,6 +157,8 @@ internal constructor(
         newValue: Dp,
         spec: AnimationSpec<Dp> = tween(220, easing = FastOutSlowInEasing)
     ) = coroutineScope.launch {
+        dragValue?.let { animatable.snapTo(it) }
+        dragValue = null
         animatable.animateTo(newValue, spec)
     }
 
@@ -181,6 +186,7 @@ internal constructor(
     fun dismissSoft() = dismiss(tween(220, easing = FastOutSlowInEasing))
 
     fun snapTo(value: Dp) = coroutineScope.launch {
+        dragValue = null
         animatable.snapTo(value)
     }
 
