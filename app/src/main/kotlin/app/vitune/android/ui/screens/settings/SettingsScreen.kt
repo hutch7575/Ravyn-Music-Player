@@ -4,6 +4,7 @@ package app.vitune.android.ui.screens.settings
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -59,38 +60,63 @@ import kotlinx.collections.immutable.toImmutableList
 @Route
 @Composable
 fun SettingsScreen() {
-    val saveableStateHolder = rememberSaveableStateHolder()
     val [tabIndex, onTabChanged] = rememberSaveable { mutableIntStateOf(0) }
-
     PersistMapCleanup("settings/")
-
     RouteHandler {
         GlobalRoutes()
-
         Content {
-            Scaffold(
-                key = "settings",
-                topIconButtonId = R.drawable.chevron_back,
-                onTopIconButtonClick = pop,
-                tabIndex = tabIndex,
-                onTabChange = onTabChanged,
-                tabColumnContent = {
-                    tab(0, R.string.appearance, R.drawable.color_palette, canHide = false)
-                    tab(1, R.string.player, R.drawable.play, canHide = false)
-                    tab(2, R.string.cache, R.drawable.server, canHide = false)
-                    tab(3, R.string.database, R.drawable.server, canHide = false)
-                    tab(4, R.string.other, R.drawable.shapes, canHide = false)
-                    tab(5, R.string.about, R.drawable.information, canHide = false)
+            val palette = LocalAppearance.current.colorPalette
+            val insets = LocalPlayerAwareWindowInsets.current
+            val topInset = insets.only(WindowInsetsSides.Top).asPaddingValues()
+            Column(Modifier.fillMaxSize().background(palette.background0)
+                .padding(top = topInset.calculateTopPadding())) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().height(64.dp)
+                        .padding(start = 5.dp, end = 19.dp)) {
+                    app.vitune.android.ui.ravyn.RavynIcon(
+                        R.drawable.chevron_back, "Back", pop
+                    )
+                    app.vitune.android.ui.ravyn.RavynLabel(
+                        "Settings", 25, bold = true
+                    )
                 }
-            ) { currentTabIndex ->
-                saveableStateHolder.SaveableStateProvider(currentTabIndex) {
-                    when (currentTabIndex) {
-                        0 -> AppearanceSettings()
-                        1 -> PlayerSettings()
-                        2 -> CacheSettings()
-                        3 -> DatabaseSettings()
-                        4 -> OtherSettings()
-                        5 -> About()
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    listOf("Appearance", "Player", "Cache", "Data", "Other", "About")
+                        .forEachIndexed { index, label ->
+                            app.vitune.android.ui.ravyn.RavynPill(
+                                label, tabIndex == index
+                            ) { onTabChanged(index) }
+                        }
+                }
+                androidx.compose.runtime.CompositionLocalProvider(
+                    LocalPlayerAwareWindowInsets provides
+                        insets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
+                ) {
+                    androidx.compose.animation.AnimatedContent(
+                        targetState = tabIndex,
+                        transitionSpec = {
+                            androidx.compose.animation.ContentTransform(
+                                androidx.compose.animation.fadeIn(
+                                    androidx.compose.animation.core.tween(210)),
+                                androidx.compose.animation.fadeOut(
+                                    androidx.compose.animation.core.tween(105)),
+                                sizeTransform = null
+                            )
+                        },
+                        modifier = Modifier.weight(1f), label = "Settings categories"
+                    ) { section ->
+                        when (section) {
+                            0 -> AppearanceSettings()
+                            1 -> PlayerSettings()
+                            2 -> CacheSettings()
+                            3 -> DatabaseSettings()
+                            4 -> OtherSettings()
+                            5 -> About()
+                        }
                     }
                 }
             }
