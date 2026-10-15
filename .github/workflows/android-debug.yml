@@ -27,7 +27,8 @@ jobs:
           if [ ! -x "$SDKMANAGER" ]; then
             SDKMANAGER="$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager"
           fi
-          "$SDKMANAGER" --install "platforms;android-37" "build-tools;37.0.0" "ndk;29.0.14206865" "cmake;4.1.2"
+          "$SDKMANAGER" --list --channel=3 | grep -E "platforms;android-(37|CinnamonBun)|build-tools;37" || true
+          "$SDKMANAGER" --channel=3 --install "platforms;android-37" "build-tools;37.0.0" "ndk;29.0.14206865" "cmake;4.1.2"
       - name: Build debug APK
         run: |
           chmod +x gradlew
