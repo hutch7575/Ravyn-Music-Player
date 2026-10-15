@@ -68,7 +68,6 @@ import app.vitune.android.Dependencies
 import app.vitune.android.MainActivity
 import app.vitune.android.R
 import app.vitune.android.models.Event
-import app.vitune.android.models.Format
 import app.vitune.android.models.QueuedMediaItem
 import app.vitune.android.models.Song
 import app.vitune.android.models.SongWithContentLength
@@ -118,9 +117,7 @@ import app.vitune.core.ui.utils.songBundle
 import app.vitune.core.ui.utils.streamVolumeFlow
 import app.vitune.providers.innertube.Innertube
 import app.vitune.providers.innertube.models.NavigationEndpoint
-import app.vitune.providers.innertube.models.bodies.PlayerBody
 import app.vitune.providers.innertube.models.bodies.SearchBody
-import app.vitune.providers.innertube.requests.player
 import app.vitune.providers.innertube.requests.searchPage
 import app.vitune.providers.innertube.utils.from
 import app.vitune.providers.sponsorblock.SponsorBlock
@@ -1407,22 +1404,20 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                         .withUri(cachedUri.uri)
                         .ranged(cachedUri.meta)
                 } ?: run {
-                    val body = runBlocking(Dispatchers.IO) {
-                        Innertube.player(PlayerBody(videoId = mediaId))
-                    }?.getOrNull()
-                    val youtubeFormat = body?.streamingData?.highestQualityFormat
-
+                    // Only extraction is required to start the audio stream. The
+                    // old implementation made up to four Innertube requests first,
+                    // blocking playback even when yt-dlp could resolve the URL.
                     val info = runCatching {
                         Dependencies.runDownload(mediaId)
                     }.mapCatching {
                         YouTubeDLResponse.fromString(it)
                     }.getOrElse { throw UnplayableException(it) }
                     if (info.id != mediaId) throw VideoIdMismatchException()
-                    val format = info.formats?.firstOrNull { it.formatId == info.formatId }
-                    val streamSize = info.fileSize ?: info.approximateFileSize
 
-                    val uri =
-                        runCatching { info.url?.toUri() }.getOrNull() ?: throw UnplayableException()
+                    // Approximate byte counts are unsafe for limiting the final HTTP
+                    // range; if the size is unknown, let Media3 stream until EOF.
+                    val streamSize = info.fileSize
+                    val uri = info.url?.toUri() ?: throw UnplayableException()
 
                     val mediaItem = runCatching {
                         runBlocking(Dispatchers.IO) { findMediaItem(mediaId) }
@@ -1430,11 +1425,9 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
                     val extras = mediaItem?.mediaMetadata?.extras?.songBundle
                     if (extras?.durationText == null) {
-                        body
-                            ?.streamingData
-                            ?.highestQualityFormat
-                            ?.approxDurationMs
-                            ?.div(1000)
+                        info.duration
+                            ?.toLong()
+                            ?.takeIf { it > 0L }
                             ?.let(DateUtils::formatElapsedTime)
                             ?.removePrefix("0")
                             ?.let { durationText ->
@@ -1446,18 +1439,16 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                     transaction {
                         runCatching {
                             mediaItem?.let(Database::insert)
-                            Database.insert(
-                                Format(
-                                    songId = mediaId,
-                                    itag = info.formatId?.toIntOrNull(),
-                                    mimeType = youtubeFormat?.mimeType,
-                                    bitrate = format?.abr?.let { it * 1000 }?.toLong(),
-                                    loudnessDb = body?.playerConfig?.audioConfig?.normalizedLoudnessDb,
-                                    contentLength = streamSize,
-                                    lastModified = youtubeFormat?.lastModified
-                                )
+                            Database.upsertStreamFormat(
+                                songId = mediaId,
+                                itag = info.formatId?.toIntOrNull(),
+                                mimeType = info.mimeType,
+                                bitrate = info.formats
+                                    ?.firstOrNull { it.formatId == info.formatId }
+                                    ?.abr?.let { (it * 1000).toLong() },
+                                contentLength = streamSize
                             )
-                        }
+                        }.onFailure { it.printStackTrace() }
                     }
 
                     uriCache.push(
