@@ -131,7 +131,7 @@ fun RavynRoot(
         related = runCatching {
             Innertube.relatedPage(
                 NextBody(videoId = recent.firstOrNull()?.id ?: "J7p4bzqLvCw")
-            ).getOrNull()
+            )?.getOrNull()
         }.getOrNull()
     }
 
