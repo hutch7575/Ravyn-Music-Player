@@ -126,6 +126,8 @@ fun Queue(
         topStart = 12.dp,
         topEnd = 12.dp
     ),
+    collapsedBarColor: Color? = null,
+    collapsedIconColor: Color? = null,
     scrollConnection: NestedScrollConnection = remember(layoutState::preUpPostDownNestedScrollConnection),
     windowInsets: WindowInsets = WindowInsets.systemBars
 ) {
@@ -223,7 +225,7 @@ fun Queue(
             Row(
                 modifier = Modifier
                     .clip(shape)
-                    .background(colorPalette.background2)
+                    .background(collapsedBarColor ?: colorPalette.background2)
                     .fillMaxSize()
                     .then(innerModifier)
                     .padding(horizontalBottomPaddingValues),
@@ -237,7 +239,7 @@ fun Queue(
                 Image(
                     painter = painterResource(R.drawable.playlist),
                     contentDescription = null,
-                    colorFilter = ColorFilter.tint(colorPalette.text),
+                    colorFilter = ColorFilter.tint(collapsedIconColor ?: colorPalette.text),
                     modifier = Modifier.size(18.dp)
                 )
 
