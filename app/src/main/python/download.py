@@ -22,7 +22,10 @@ def upgrade(package_name):
         import pip
         from pip._internal import main as pip_main
 
-        pip_main(["install", "--upgrade", package_name])
+        result = pip_main(["install", "--upgrade", package_name])
+        if result != 0:
+            raise RuntimeError(f"pip exited with status {result}")
         print(f"Successfully upgraded {package_name}")
     except Exception as e:
         print(f"Error upgrading package {package_name}: {e}")
+        raise
