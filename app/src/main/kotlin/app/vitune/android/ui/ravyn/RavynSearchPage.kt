@@ -96,7 +96,7 @@ fun RavynSearchPage(
             delay(330)
             suggestions = runCatching {
                 Innertube.searchSuggestions(SearchSuggestionsBody(input = query.text))
-                    .getOrNull().orEmpty()
+                    ?.getOrNull().orEmpty()
             }.getOrDefault(emptyList())
         }
     }
