@@ -442,7 +442,6 @@ fun Player(
                     .weight(1f)
             )
         } else RavynNowPlaying(
-            artwork = metadata?.artworkUri?.thumbnail(Dimensions.thumbnails.player.song.px),
             media = mediaItem?.toUiMedia(duration),
             binder = binder,
             title = metadata?.title?.toString().orEmpty(),
@@ -566,17 +565,9 @@ fun Player(
             binder = binder,
             collapsedBarColor = if (isLandscape) null else Color(0xFF17213E),
             collapsedIconColor = if (isLandscape) null else Color.White,
-            beforeContent = {
-                if (playerLayout == PlayerPreferences.PlayerLayout.New) IconButton(
-                    onClick = { trackLoopEnabled = !trackLoopEnabled },
-                    icon = R.drawable.infinite,
-                    color = if (isLandscape) colorPalette.text else Color.White,
-                    enabled = trackLoopEnabled,
-                    modifier = Modifier
-                        .padding(vertical = 8.dp)
-                        .size(20.dp)
-                ) else Spacer(modifier = Modifier.width(20.dp))
-            },
+            // Track repeat already has a working control in RavynNowPlaying.
+            // The old infinity shortcut disabled itself when repeat was off.
+            beforeContent = { Spacer(modifier = Modifier.width(20.dp)) },
             afterContent = {
                 IconButton(
                     icon = R.drawable.ellipsis_horizontal,
