@@ -72,6 +72,9 @@ import app.vitune.android.service.downloadState
 import app.vitune.android.ui.components.BottomSheetMenu
 import app.vitune.android.ui.components.rememberBottomSheetState
 import app.vitune.android.ui.components.themed.LinearProgressIndicator
+import app.vitune.android.ui.ravyn.LocalRavynNavigation
+import app.vitune.android.ui.ravyn.RavynNavigationState
+import app.vitune.android.ui.ravyn.RavynBottomNavigationHeight
 import app.vitune.android.ui.screens.albumRoute
 import app.vitune.android.ui.screens.artistRoute
 import app.vitune.android.ui.screens.home.HomeScreen
@@ -212,6 +215,7 @@ class MainActivity : ComponentActivity(), MonetColorsChangedListener {
         )
 
         SystemBarAppearance(palette = appearance.colorPalette)
+        val ravynNavigation = remember { RavynNavigationState() }
 
         BoxWithConstraints(
             modifier = Modifier.background(appearance.colorPalette.background0) then modifier.fillMaxSize()
@@ -225,6 +229,7 @@ class MainActivity : ComponentActivity(), MonetColorsChangedListener {
                 LocalShimmerTheme provides shimmerTheme(),
                 LocalLayoutDirection provides LayoutDirection.Ltr,
                 LocalPersistMap provides Dependencies.application.persistMap,
+                LocalRavynNavigation provides ravynNavigation,
                 LocalMonetCompat provides monet
             ) {
                 content()
@@ -258,7 +263,7 @@ class MainActivity : ComponentActivity(), MonetColorsChangedListener {
             val playerBottomSheetState = rememberBottomSheetState(
                 key = vm.binder,
                 dismissedBound = 0.dp,
-                collapsedBound = Dimensions.items.collapsedPlayerHeight + bottomDp,
+                collapsedBound = Dimensions.items.collapsedPlayerHeight + RavynBottomNavigationHeight + bottomDp,
                 expandedBound = maxHeight
             )
 

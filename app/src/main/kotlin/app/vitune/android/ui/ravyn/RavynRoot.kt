@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -91,7 +93,9 @@ fun RavynRoot(
     onLocalPlaylist: (Long) -> Unit
 ) {
     val binder = LocalPlayerServiceBinder.current
-    var tab by rememberSaveable { mutableStateOf(0) }
+    val ravynNavigation = LocalRavynNavigation.current
+    ravynNavigation.search = onSearch
+    var tab by ravynNavigation.destination
     var collection by rememberSaveable { mutableStateOf(0) }
     var showCreate by rememberSaveable { mutableStateOf(false) }
     var newName by rememberSaveable { mutableStateOf("") }
@@ -210,35 +214,9 @@ fun RavynRoot(
                 }
             )
         }
-        Row(Modifier.fillMaxWidth().height(65.dp).background(RavynStyle.panel),
-            verticalAlignment = Alignment.CenterVertically) {
-            RavynBottom("Home", R.drawable.home, tab == 0, Modifier.weight(1f)) {
-                tab = 0
-            }
-            RavynBottom("Search", R.drawable.search, false, Modifier.weight(1f), onSearch)
-            RavynBottom("Your Library", R.drawable.library, tab == 1,
-                Modifier.weight(1f)) { tab = 1 }
-        }
-        Spacer(Modifier.height(insets.calculateBottomPadding()))
-    }
-}
-
-@Composable
-private fun RavynBottom(
-    text: String, icon: Int, active: Boolean,
-    modifier: Modifier = Modifier, onClick: () -> Unit
-) {
-    val tint by animateColorAsState(
-        if (active) ravynAccent() else RavynStyle.secondary,
-        animationSpec = tween(250), label = "Navigation colour"
-    )
-    Column(horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = modifier.fillMaxHeight().clickable(onClick = onClick)) {
-        Image(painterResource(icon), text,
-            colorFilter = ColorFilter.tint(tint), modifier = Modifier.size(22.dp))
-        Spacer(Modifier.height(5.dp))
-        RavynLabel(text, 11, tint, bold = active)
+        RavynBottomNavigation()
+        Spacer(Modifier.height(WindowInsets.systemBars
+            .only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()))
     }
 }
 
@@ -263,8 +241,8 @@ private fun RavynHome(
         in 12..17 -> "Good afternoon"
         else -> "Good evening"
     }
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp),
-        contentPadding = PaddingValues(bottom = 25.dp)) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(15.dp),
+        contentPadding = PaddingValues(bottom = 94.dp)) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(7.dp),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp)
