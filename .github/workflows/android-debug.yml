@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - fix/playback-and-import-safety
+      - feat/settings-and-in-app-updates
+      - master
   workflow_dispatch:
 
 jobs:
