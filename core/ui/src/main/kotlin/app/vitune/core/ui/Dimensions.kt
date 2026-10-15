@@ -6,8 +6,8 @@ import androidx.compose.ui.unit.dp
 
 object Dimensions {
     object Thumbnails {
-        val album = 108.dp
-        val artist = 92.dp
+        val album = 136.dp
+        val artist = 110.dp
         val song = 54.dp
         val playlist = album
 
@@ -25,11 +25,11 @@ object Dimensions {
 
     object Items {
         val moodHeight = 64.dp
-        val headerHeight = 140.dp
+        val headerHeight = 112.dp
         val collapsedPlayerHeight = 64.dp
 
         val verticalPadding = 8.dp
-        val horizontalPadding = 8.dp
+        val horizontalPadding = 12.dp
         val alternativePadding = 12.dp
 
         val gap = 4.dp

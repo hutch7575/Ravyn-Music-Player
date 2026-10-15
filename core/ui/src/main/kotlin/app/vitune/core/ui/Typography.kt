@@ -31,7 +31,7 @@ data class Typography(
     val s by lazy { style.copy(fontSize = 16.sp) }
     val m by lazy { style.copy(fontSize = 18.sp) }
     val l by lazy { style.copy(fontSize = 20.sp) }
-    val xxl by lazy { style.copy(fontSize = 32.sp) }
+    val xxl by lazy { style.copy(fontSize = 27.sp) }
 
     fun copy(color: Color) = Typography(
         style = style.copy(color = color),

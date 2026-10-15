@@ -32,7 +32,7 @@ import app.vitune.core.ui.LocalAppearance
 @Composable
 inline fun Menu(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+    shape: Shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp),
     content: @Composable ColumnScope.() -> Unit
 ) = Column(
     modifier = modifier
@@ -61,7 +61,7 @@ fun MenuEntry(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        horizontalArrangement = Arrangement.spacedBy(17.dp),
         modifier = modifier
             .combinedClickable(
                 enabled = enabled,
@@ -70,18 +70,18 @@ fun MenuEntry(
             )
             .fillMaxWidth()
             .alpha(if (enabled) 1f else 0.4f)
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = 18.dp)
     ) {
         Image(
             painter = painterResource(icon),
             contentDescription = null,
             colorFilter = ColorFilter.tint(colorPalette.text),
-            modifier = Modifier.size(15.dp)
+            modifier = Modifier.size(19.dp)
         )
 
         Column(
             modifier = Modifier
-                .padding(vertical = 16.dp)
+                .padding(vertical = 13.dp)
                 .weight(1f)
         ) {
             BasicText(

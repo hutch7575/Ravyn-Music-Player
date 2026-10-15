@@ -206,7 +206,7 @@ fun SliderSettingsEntry(
         modifier = Modifier
             .height(36.dp)
             .alpha(if (isEnabled) 1f else 0.5f)
-            .let { if (usePadding) it.padding(start = 32.dp, end = 16.dp) else it }
+            .let { if (usePadding) it.padding(start = 24.dp, end = 20.dp) else it }
             .padding(vertical = 16.dp)
             .fillMaxWidth()
     )
@@ -261,11 +261,11 @@ fun SettingsEntry(
     horizontalArrangement = Arrangement.spacedBy(16.dp),
     verticalAlignment = Alignment.CenterVertically,
     modifier = modifier
-        .clip(RoundedCornerShape(25))
+        .clip(RoundedCornerShape(8.dp))
         .clickable(enabled = isEnabled, onClick = onClick)
         .alpha(if (isEnabled) 1f else 0.5f)
         .let { if (usePadding) it.padding(start = 32.dp, end = 16.dp) else it }
-        .padding(vertical = 16.dp)
+        .padding(vertical = 14.dp)
         .fillMaxWidth()
 ) {
     val (colorPalette, typography) = LocalAppearance.current
@@ -314,14 +314,14 @@ fun SettingsEntryGroupText(
         text = title,
         style = typography.xs.semiBold.copy(colorPalette.accent),
         modifier = modifier
-            .padding(start = 16.dp)
+            .padding(start = 8.dp)
             .padding(horizontal = 16.dp)
             .semantics { text = AnnotatedString(text = title) }
     )
 }
 
 @Composable
-fun SettingsGroupSpacer(modifier: Modifier = Modifier) = Spacer(modifier = modifier.height(16.dp))
+fun SettingsGroupSpacer(modifier: Modifier = Modifier) = Spacer(modifier = modifier.height(12.dp))
 
 @Composable
 fun SettingsCategoryScreen(
@@ -366,7 +366,7 @@ fun SettingsGroup(
     important: Boolean = false,
     trailingContent: @Composable (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
-) = Column(modifier = modifier.fillMaxWidth()) {
+) = Column(modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
     Row {
         Column {
             SettingsEntryGroupText(title = title)
