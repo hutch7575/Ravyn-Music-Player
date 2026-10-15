@@ -26,7 +26,7 @@ object Dimensions {
     object Items {
         val moodHeight = 64.dp
         val headerHeight = 112.dp
-        val collapsedPlayerHeight = 64.dp
+        val collapsedPlayerHeight = 56.dp
 
         val verticalPadding = 8.dp
         val horizontalPadding = 12.dp

@@ -55,7 +55,7 @@ internal object RavynStyle {
     val text = Color(0xFFF7F8FA)
     val secondary = Color(0xFFB0B8BC)
     val muted = Color(0xFF81898E)
-    val radius = RoundedCornerShape(12.dp)
+    val radius = RoundedCornerShape(10.dp)
 }
 
 @Composable
@@ -121,7 +121,7 @@ internal fun RavynSection(
 ) {
     Row(verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.fillMaxWidth()) {
-        RavynLabel(heading, size = 18, bold = true, modifier = Modifier.weight(1f))
+        RavynLabel(heading, size = 16, bold = true, modifier = Modifier.weight(1f))
         if (action != null && onAction != null) Box(
             Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onAction)
                 .padding(vertical = 8.dp, horizontal = 6.dp)
@@ -163,8 +163,8 @@ internal fun RavynSquareTile(
         modifier = Modifier.width(width).clip(RoundedCornerShape(9.dp)).clickable(onClick = onClick)
     ) {
         RavynArtwork(image, Modifier.size(width))
-        RavynLabel(name, size = 13, bold = true, modifier = Modifier.padding(horizontal = 2.dp))
-        if (subtitle != null) RavynLabel(subtitle, 11, RavynStyle.secondary,
+        RavynLabel(name, size = 12, bold = true, modifier = Modifier.padding(horizontal = 2.dp))
+        if (subtitle != null) RavynLabel(subtitle, 10, RavynStyle.secondary,
             modifier = Modifier.padding(horizontal = 2.dp))
     }
 }
@@ -173,9 +173,9 @@ internal fun RavynSquareTile(
 internal fun RavynArtistTile(image: String?, name: String, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.width(84.dp).clickable(onClick = onClick)) {
-        RavynArtwork(image, Modifier.size(78.dp), round = true)
-        RavynLabel(name, 12, modifier = Modifier.fillMaxWidth())
+        modifier = Modifier.width(72.dp).clickable(onClick = onClick)) {
+        RavynArtwork(image, Modifier.size(61.dp), round = true)
+        RavynLabel(name, 11, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -226,6 +226,45 @@ internal fun RavynHero(title: String, subtitle: String, @DrawableRes icon: Int, 
             Image(painterResource(icon), contentDescription = "Play",
                 colorFilter = ColorFilter.tint(RavynStyle.background),
                 modifier = Modifier.size(24.dp))
+        }
+    }
+}
+
+/** A low-contrast filter chip, matching the classic reference's little 'Music' pill. */
+@Composable
+internal fun RavynHomeCategoryChip() {
+    Box(
+        modifier = Modifier
+            .background(RavynStyle.raised, RoundedCornerShape(7.dp))
+            .padding(horizontal = 11.dp, vertical = 6.dp)
+    ) {
+        RavynLabel("Music", 10, RavynStyle.secondary)
+    }
+}
+
+/** Compact history card with artwork beside the text, not another tall album tile. */
+@Composable
+internal fun RavynRecentTile(
+    artwork: String?, title: String, artist: String?, onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .width(165.dp)
+            .height(57.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(RavynStyle.panel)
+            .clickable(onClick = onClick)
+            .padding(5.dp)
+    ) {
+        RavynArtwork(artwork, Modifier.size(47.dp))
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            RavynLabel(title, 11, RavynStyle.text, bold = true)
+            RavynLabel(artist.orEmpty(), 10, RavynStyle.secondary)
         }
     }
 }

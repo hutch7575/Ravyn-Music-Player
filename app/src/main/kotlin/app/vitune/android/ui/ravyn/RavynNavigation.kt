@@ -38,7 +38,7 @@ class RavynNavigationState {
 
 val LocalRavynNavigation = staticCompositionLocalOf { RavynNavigationState() }
 
-val RavynBottomNavigationHeight = 58.dp
+val RavynBottomNavigationHeight = 54.dp
 
 @Composable
 fun RavynBottomNavigation(modifier: Modifier = Modifier) {

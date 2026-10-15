@@ -245,7 +245,7 @@ fun Player(
                         modifier = Modifier
                             .clip(thumbnailCornerSize.coerceAtMost(ThumbnailRoundness.Heavy.dp).roundedShape)
                             .background(colorPalette.background0)
-                            .size(48.dp)
+                            .size(42.dp)
                     )
                 }
 

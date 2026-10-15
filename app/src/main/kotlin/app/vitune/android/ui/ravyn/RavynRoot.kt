@@ -165,10 +165,29 @@ fun RavynRoot(
     Column(Modifier.fillMaxSize().background(RavynStyle.background)
         .padding(top = insets.calculateTopPadding())) {
         Row(verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().height(68.dp)
-                .padding(start = 20.dp, end = 8.dp)) {
-            RavynLabel("Ravyn", 28, bold = true, modifier = Modifier.weight(1f))
-            RavynIcon(R.drawable.search, "Search", onSearch)
+            modifier = Modifier.fillMaxWidth().height(62.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(ravynAccent().copy(alpha = 0.10f),
+                            RavynStyle.background, RavynStyle.background)
+                    )
+                )
+                .padding(start = 17.dp, end = 8.dp)) {
+            if (tab == 0) {
+                val hour = java.util.Calendar.getInstance()
+                    .get(java.util.Calendar.HOUR_OF_DAY)
+                RavynLabel(
+                    when (hour) {
+                        in 5..11 -> "Good morning"
+                        in 12..17 -> "Good afternoon"
+                        else -> "Good evening"
+                    },
+                    size = 20, bold = true, modifier = Modifier.weight(1f)
+                )
+            } else {
+                RavynLabel("Your Library", size = 21, bold = true,
+                    modifier = Modifier.weight(1f))
+            }
             RavynIcon(R.drawable.history, "History", onHistory)
             RavynIcon(R.drawable.settings, "Settings", onSettings)
         }
@@ -235,32 +254,22 @@ private fun RavynHome(
     onPlay: (Song) -> Unit,
     onPlayOnline: (Innertube.SongItem) -> Unit
 ) {
-    val accent = ravynAccent()
-    val greeting = when (java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) {
-        in 5..11 -> "Good morning"
-        in 12..17 -> "Good afternoon"
-        else -> "Good evening"
-    }
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(15.dp),
-        contentPadding = PaddingValues(bottom = 94.dp)) {
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(bottom = 110.dp)
+    ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(7.dp),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp)
-                    .background(Brush.horizontalGradient(listOf(
-                        RavynStyle.panel, accent.copy(alpha = 0.30f), RavynStyle.panel
-                    )), RavynStyle.radius).clickable(onClick = onDiscover)
-                    .padding(horizontal = 18.dp, vertical = 22.dp)) {
-                RavynLabel(greeting, 23, bold = true)
-                RavynLabel("Music for every moment", 13, RavynStyle.secondary)
+            Row(modifier = Modifier.fillMaxWidth()
+                .padding(start = 17.dp, top = 0.dp, bottom = 1.dp)) {
+                RavynHomeCategoryChip()
             }
         }
-
         if (artists.isNotEmpty() || !related?.artists.isNullOrEmpty()) item {
             Column {
-                RavynSection("Your top artists", Modifier.padding(horizontal = 18.dp))
+                RavynSection("Your favorite artists", Modifier.padding(horizontal = 17.dp))
                 Spacer(Modifier.height(10.dp))
-                LazyRow(contentPadding = PaddingValues(horizontal = 18.dp),
-                    horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+                LazyRow(contentPadding = PaddingValues(horizontal = 17.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (artists.isNotEmpty()) {
                         items(artists.take(16), key = { it.id }) { artist ->
                             RavynArtistTile(artist.thumbnailUrl, artist.name.orEmpty()) {
@@ -277,37 +286,37 @@ private fun RavynHome(
                 }
             }
         }
-        if (!related?.playlists.isNullOrEmpty() || playlists.isNotEmpty()) item {
+        if (recent.isNotEmpty()) item {
             Column {
-                RavynSection("Made for you", Modifier.padding(horizontal = 18.dp))
+                RavynSection("Recently played", Modifier.padding(horizontal = 17.dp))
                 Spacer(Modifier.height(10.dp))
                 LazyRow(contentPadding = PaddingValues(horizontal = 18.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    if (!related?.playlists.isNullOrEmpty()) {
-                        items(related?.playlists.orEmpty().take(12), key = { it.key }) { mix ->
-                            RavynSquareTile(mix.thumbnail?.url, mix.info?.name.orEmpty(),
-                                mix.channel?.name, width = 148.dp) { onOnlinePlaylist(mix) }
-                        }
-                    } else {
-                        items(playlists.take(12), key = { it.id }) { p ->
-                            RavynSquareTile(p.thumbnail, p.name,
-                                p.songCount.toString() + " songs", width = 148.dp) {
-                                onLocalPlaylist(p.id)
-                            }
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(recent.take(16), key = { it.id }) { song ->
+                        RavynRecentTile(song.thumbnailUrl, song.title, song.artistsText) {
+                            onPlay(song)
                         }
                     }
                 }
             }
         }
-        if (recent.isNotEmpty()) item {
+        if (!related?.playlists.isNullOrEmpty() || playlists.isNotEmpty()) item {
             Column {
-                RavynSection("Recently played", Modifier.padding(horizontal = 18.dp))
+                RavynSection("Made for you", Modifier.padding(horizontal = 17.dp))
                 Spacer(Modifier.height(10.dp))
                 LazyRow(contentPadding = PaddingValues(horizontal = 18.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(recent.take(16), key = { it.id }) { song ->
-                        RavynSquareTile(song.thumbnailUrl, song.title, song.artistsText) {
-                            onPlay(song)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (!related?.playlists.isNullOrEmpty()) {
+                        items(related?.playlists.orEmpty().take(12), key = { it.key }) { mix ->
+                            RavynSquareTile(mix.thumbnail?.url, mix.info?.name.orEmpty(),
+                                mix.channel?.name, width = 125.dp) { onOnlinePlaylist(mix) }
+                        }
+                    } else {
+                        items(playlists.take(12), key = { it.id }) { p ->
+                            RavynSquareTile(p.thumbnail, p.name,
+                                p.songCount.toString() + " songs", width = 125.dp) {
+                                onLocalPlaylist(p.id)
+                            }
                         }
                     }
                 }
