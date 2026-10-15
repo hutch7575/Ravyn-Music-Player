@@ -3,6 +3,8 @@ package app.vitune.android.ui.screens.player
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -65,19 +67,9 @@ fun LyricsDialog(
                     initialContentExit = ExitTransition.None
                 )
 
-            val direction = if (targetState.firstPeriodIndex > initialState.firstPeriodIndex)
-                AnimatedContentTransitionScope.SlideDirection.Left
-            else AnimatedContentTransitionScope.SlideDirection.Right
-
             ContentTransform(
-                targetContentEnter = slideIntoContainer(
-                    towards = direction,
-                    animationSpec = tween(500)
-                ),
-                initialContentExit = slideOutOfContainer(
-                    towards = direction,
-                    animationSpec = tween(500)
-                ),
+                targetContentEnter = fadeIn(tween(180)),
+                initialContentExit = fadeOut(tween(130)),
                 sizeTransform = null
             )
         },
@@ -85,8 +77,8 @@ fun LyricsDialog(
     ) { currentWindow ->
         BoxWithConstraints(
             modifier = modifier
-                .padding(all = 36.dp)
-                .padding(vertical = 32.dp)
+                .padding(all = 14.dp)
+                .padding(vertical = 20.dp)
                 .clip(thumbnailShape)
                 .fillMaxSize()
                 .background(colorPalette.background1)
@@ -112,7 +104,7 @@ fun LyricsDialog(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(colorPalette.background0)
-                    .blur(radius = 8.dp)
+                    .blur(radius = 0.dp)
             )
 
             Lyrics(
@@ -125,7 +117,8 @@ fun LyricsDialog(
                 onMenuLaunch = onDismiss,
                 modifier = Modifier.height(maxHeight),
                 shouldKeepScreenAwake = false, // otherwise the keepScreenOn flag resets after dialog closes
-                shouldUpdateLyrics = false
+                shouldUpdateLyrics = false,
+                ravynStyle = true
             )
         }
     }

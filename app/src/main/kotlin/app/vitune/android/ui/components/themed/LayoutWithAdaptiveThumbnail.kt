@@ -50,12 +50,12 @@ fun adaptiveThumbnailContent(
 ): @Composable () -> Unit = {
     BoxWithConstraints(
         contentAlignment = Alignment.Center,
-        modifier = modifier.padding(horizontal = 8.dp, vertical = 16.dp)
+        modifier = modifier.padding(horizontal = 14.dp, vertical = 14.dp)
     ) {
         val [colorPalette, _, _, thumbnailShape] = LocalAppearance.current
         val thumbnailSize =
             if (isLandscape) (maxHeight - 96.dp - Dimensions.items.collapsedPlayerHeight)
-            else maxWidth
+            else minOf(maxWidth, 340.dp)
 
         val innerModifier = Modifier
             .clip(shape ?: thumbnailShape)
@@ -63,12 +63,11 @@ fun adaptiveThumbnailContent(
 
         if (isLoading) Spacer(
             modifier = innerModifier
-                .shimmer()
-                .background(colorPalette.shimmer)
+                .background(colorPalette.background2)
         ) else AsyncImage(
             model = url?.thumbnail(thumbnailSize.px),
             contentDescription = null,
-            modifier = innerModifier.background(colorPalette.background1)
+            modifier = innerModifier.background(colorPalette.background2)
         )
     }
 }

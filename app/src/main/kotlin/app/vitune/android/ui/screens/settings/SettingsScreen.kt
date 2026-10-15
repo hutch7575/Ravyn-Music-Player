@@ -366,7 +366,13 @@ fun SettingsGroup(
     important: Boolean = false,
     trailingContent: @Composable (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
-) = Column(modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+) = Column(
+    modifier = modifier
+        .fillMaxWidth()
+        .padding(horizontal = 12.dp, vertical = 5.dp)
+        .background(LocalAppearance.current.colorPalette.background1, RoundedCornerShape(12.dp))
+        .padding(vertical = 12.dp)
+) {
     Row {
         Column {
             SettingsEntryGroupText(title = title)

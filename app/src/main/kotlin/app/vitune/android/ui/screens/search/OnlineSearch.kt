@@ -1,6 +1,8 @@
 package app.vitune.android.ui.screens.search
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -146,7 +148,7 @@ fun OnlineSearch(
                     BasicTextField(
                         value = textFieldValue,
                         onValueChange = onTextFieldValueChange,
-                        textStyle = typography.xxl.medium.align(TextAlign.End),
+                        textStyle = typography.m.medium.align(TextAlign.Start),
                         singleLine = true,
                         maxLines = 1,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -157,7 +159,11 @@ fun OnlineSearch(
                         ),
                         cursorBrush = SolidColor(colorPalette.text),
                         decorationBox = decorationBox,
-                        modifier = Modifier.focusRequester(focusRequester)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(colorPalette.background1, RoundedCornerShape(9.dp))
+                            .padding(horizontal = 15.dp, vertical = 12.dp)
+                            .focusRequester(focusRequester)
                     )
                 },
                 actionsContent = {
