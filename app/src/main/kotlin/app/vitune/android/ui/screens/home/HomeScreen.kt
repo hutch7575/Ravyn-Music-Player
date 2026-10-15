@@ -62,8 +62,9 @@ fun HomeScreen() {
         Content {
             Scaffold(
                 key = "home",
-                topIconButtonId = R.drawable.settings,
-                onTopIconButtonClick = { settingsRoute() },
+                topIconButtonId = R.drawable.search,
+                onTopIconButtonClick = { searchRoute("") },
+                onDrawerSettingsClick = { settingsRoute() },
                 tabIndex = UIStatePreferences.homeScreenTabIndex,
                 onTabChange = { UIStatePreferences.homeScreenTabIndex = it },
                 tabColumnContent = {

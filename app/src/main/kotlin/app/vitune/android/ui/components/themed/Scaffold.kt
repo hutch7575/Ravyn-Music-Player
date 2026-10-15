@@ -28,6 +28,7 @@ fun Scaffold(
     key: String,
     topIconButtonId: Int,
     onTopIconButtonClick: () -> Unit,
+    onDrawerSettingsClick: () -> Unit = onTopIconButtonClick,
     tabIndex: Int,
     onTabChange: (Int) -> Unit,
     tabColumnContent: TabsBuilder.() -> Unit,
@@ -38,7 +39,7 @@ fun Scaffold(
     val (colorPalette) = LocalAppearance.current
     var hiddenTabs by UIStatePreferences.mutableTabStateOf(key)
 
-    val showClassicHome = key == "home" && !isLandscape
+    val showClassicHome = !isLandscape
     val tabContent: @Composable () -> Unit = {
         AnimatedContent(
             targetState = tabIndex,
@@ -64,6 +65,13 @@ fun Scaffold(
             setHiddenTabs = { hiddenTabs = it.toImmutableList() },
             settingsIcon = topIconButtonId,
             onSettingsClick = onTopIconButtonClick,
+            onDrawerSettingsClick = onDrawerSettingsClick,
+            showDrawer = key == "home",
+            pageTitle = when (key) {
+                "settings" -> "Settings"
+                "home" -> "Ravyn"
+                else -> "Search"
+            },
             content = tabContent
         )
     } else {

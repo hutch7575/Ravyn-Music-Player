@@ -1,5 +1,7 @@
 package app.vitune.android.ui.items
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -15,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.vitune.core.ui.Dimensions
+import app.vitune.core.ui.LocalAppearance
 
 @Composable
 fun ItemContainer(
@@ -29,9 +32,14 @@ fun ItemContainer(
 
     if (alternative) Column(
         horizontalAlignment = horizontalAlignment,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier
-            .padding(Dimensions.items.alternativePadding)
+            .padding(4.dp)
+            .background(
+                LocalAppearance.current.colorPalette.background1,
+                RoundedCornerShape(10.dp)
+            )
+            .padding(10.dp)
             .width(thumbnailSize)
     ) { content(Modifier.align(Alignment.CenterHorizontally)) }
     else Row(

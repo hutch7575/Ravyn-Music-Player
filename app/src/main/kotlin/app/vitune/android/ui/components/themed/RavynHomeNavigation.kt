@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -58,8 +59,8 @@ import app.vitune.android.LocalPlayerAwareWindowInsets
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 
-private val classicPurple = Color(0xFF6753BB)
-private val classicPurpleDark = Color(0xFF58439F)
+private val classicPurple = Color(0xFF9A77F4)
+private val classicPurpleDark = Color(0xFF24213F)
 private val navText = Color.White
 
 /**
@@ -75,6 +76,9 @@ fun RavynHomeNavigation(
     setHiddenTabs: (List<String>) -> Unit,
     @DrawableRes settingsIcon: Int,
     onSettingsClick: () -> Unit,
+    onDrawerSettingsClick: () -> Unit = onSettingsClick,
+    showDrawer: Boolean = true,
+    pageTitle: String = "Ravyn",
     content: @Composable () -> Unit
 ) {
     var drawerOpen by remember { mutableStateOf(false) }
@@ -94,7 +98,11 @@ fun RavynHomeNavigation(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .background(classicPurple)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xFF24203F), Color(0xFF191B32))
+                        )
+                    )
                     .padding(topInset)
             ) {
                 Row(
@@ -106,22 +114,28 @@ fun RavynHomeNavigation(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(RoundedCornerShape(28.dp))
-                            .clickable { drawerOpen = true }
+                            .clickable { if (showDrawer) drawerOpen = true else onSettingsClick() }
                             .semantics { contentDescription = "Open navigation menu" }
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            repeat(3) {
-                                Spacer(
-                                    Modifier
-                                        .width(20.dp)
-                                        .height(2.dp)
-                                        .background(Color.White)
-                                )
+                        if (showDrawer) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                repeat(3) {
+                                    Spacer(
+                                        Modifier.width(20.dp).height(2.dp).background(Color.White)
+                                    )
+                                }
                             }
+                        } else {
+                            Image(
+                                painter = painterResource(settingsIcon),
+                                contentDescription = "Back",
+                                colorFilter = ColorFilter.tint(Color.White),
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
                     }
                     BasicText(
-                        text = "Ravyn",
+                        text = pageTitle,
                         style = TextStyle(
                             fontSize = 23.sp,
                             fontWeight = FontWeight.Medium,
@@ -130,7 +144,7 @@ fun RavynHomeNavigation(
                         ),
                         modifier = Modifier.weight(1f)
                     )
-                    Box(
+                    if (showDrawer) Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .size(54.dp)
@@ -172,7 +186,7 @@ fun RavynHomeNavigation(
                                     overflow = TextOverflow.Ellipsis,
                                     style = TextStyle(
                                         color = if (selected) Color.White
-                                            else Color.White.copy(alpha = 0.70f),
+                                            else Color(0xFFB7B7CF),
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         letterSpacing = 0.45.sp
@@ -184,7 +198,7 @@ fun RavynHomeNavigation(
                                     .fillMaxWidth()
                                     .height(3.dp)
                                     .background(
-                                        if (selected) Color.White else Color.Transparent
+                                        if (selected) classicPurple else Color.Transparent
                                     )
                             )
                         }
@@ -205,7 +219,7 @@ fun RavynHomeNavigation(
             }
         }
 
-        if (drawerOpen) {
+        if (showDrawer && drawerOpen) {
             Box(
                 Modifier
                     .fillMaxSize()
@@ -214,7 +228,7 @@ fun RavynHomeNavigation(
             )
         }
 
-        AnimatedVisibility(
+        if (showDrawer) AnimatedVisibility(
             visible = drawerOpen,
             enter = slideInHorizontally(
                 initialOffsetX = { -it },
@@ -230,7 +244,7 @@ fun RavynHomeNavigation(
                 Modifier
                     .width(296.dp)
                     .fillMaxHeight()
-                    .background(Color(0xFFF7F7FB))
+                    .background(Color(0xFF171B2B))
                     .verticalScroll(rememberScrollState())
             ) {
                 Column(
@@ -238,7 +252,11 @@ fun RavynHomeNavigation(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(158.dp)
-                        .background(classicPurpleDark)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color(0xFF423077), Color(0xFF1D284C), Color(0xFF11182A))
+                            )
+                        )
                         .padding(top = topInset.calculateTopPadding(), start = 22.dp)
                 ) {
                     BasicText(
@@ -269,7 +287,7 @@ fun RavynHomeNavigation(
                             .fillMaxWidth()
                             .height(49.dp)
                             .background(
-                                if (selected) Color(0xFFEAE4FA) else Color.Transparent
+                                if (selected) Color(0xFF333050) else Color.Transparent
                             )
                             .clickable(enabled = !editingTabs) {
                                 onTabChange(index)
@@ -281,7 +299,7 @@ fun RavynHomeNavigation(
                             painter = painterResource(tab.icon),
                             contentDescription = null,
                             colorFilter = ColorFilter.tint(
-                                if (selected) classicPurple else Color(0xFF687083)
+                                if (selected) classicPurple else Color(0xFF9095B3)
                             ),
                             modifier = Modifier.size(21.dp)
                         )
@@ -289,7 +307,7 @@ fun RavynHomeNavigation(
                         BasicText(
                             text = tab.title(),
                             style = TextStyle(
-                                color = if (selected) classicPurpleDark else Color(0xFF293046),
+                                color = if (selected) Color.White else Color(0xFFD7D8E9),
                                 fontSize = 15.sp,
                                 fontWeight = if (selected) FontWeight.SemiBold
                                     else FontWeight.Medium
@@ -316,7 +334,7 @@ fun RavynHomeNavigation(
                     Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .background(Color(0xFFE1E1EB))
+                        .background(Color(0xFF37394E))
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -329,7 +347,7 @@ fun RavynHomeNavigation(
                     BasicText(
                         if (editingTabs) "DONE CUSTOMISING" else "CUSTOMISE TABS",
                         style = TextStyle(
-                            color = classicPurpleDark,
+                            color = classicPurple,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             letterSpacing = 0.6.sp
@@ -343,21 +361,21 @@ fun RavynHomeNavigation(
                         .height(52.dp)
                         .clickable {
                             drawerOpen = false
-                            onSettingsClick()
+                            onDrawerSettingsClick()
                         }
                         .padding(horizontal = 22.dp)
                 ) {
                     Image(
                         painter = painterResource(settingsIcon),
                         contentDescription = null,
-                        colorFilter = ColorFilter.tint(Color(0xFF687083)),
+                        colorFilter = ColorFilter.tint(Color(0xFF9095B3)),
                         modifier = Modifier.size(21.dp)
                     )
                     Spacer(Modifier.width(28.dp))
                     BasicText(
                         "Settings",
                         style = TextStyle(
-                            color = Color(0xFF293046),
+                            color = Color(0xFFD7D8E9),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium
                         )
