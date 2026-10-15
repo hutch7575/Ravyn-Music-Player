@@ -2,6 +2,7 @@ package app.vitune.android.ui.screens.settings
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.database.sqlite.SQLiteDatabase
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,7 +22,6 @@ import app.vitune.android.query
 import app.vitune.android.service.PlayerService
 import app.vitune.android.transaction
 import app.vitune.android.ui.screens.Route
-import app.vitune.android.utils.intent
 import app.vitune.android.utils.toast
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.io.File
@@ -111,7 +111,7 @@ fun DatabaseSettings() = with(DataPreferences) {
                 File(target.path + "-wal").delete()
                 File(target.path + "-shm").delete()
 
-                context.stopService(context.intent<PlayerService>())
+                context.stopService(Intent(context, PlayerService::class.java))
                 exitProcess(0)
             } catch (exception: Exception) {
                 exception.printStackTrace()
