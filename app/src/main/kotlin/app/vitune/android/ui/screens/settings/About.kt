@@ -125,7 +125,7 @@ class VersionCheckWorker(
                     .setContentText("Open ViTune Classic to download the new version")
                     .also {
                         it.setContentIntent(
-                            pendingIntent(Intent(this, MainActivity::class.java))
+                            pendingIntent(Intent(applicationContext, MainActivity::class.java))
                         )
                         it.setStyle(
                             NotificationCompat
