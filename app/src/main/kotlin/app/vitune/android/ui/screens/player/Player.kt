@@ -418,6 +418,9 @@ fun Player(
             )
         }
 
+        var audioDialogOpen by rememberSaveable { mutableStateOf(false) }
+        var boostDialogOpen by rememberSaveable { mutableStateOf(false) }
+
         if (isLandscape) Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = containerModifier.padding(top = 32.dp)
@@ -437,26 +440,37 @@ fun Player(
                     .fillMaxHeight()
                     .weight(1f)
             )
-        } else Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = containerModifier.padding(top = 54.dp)
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.weight(1.25f)
-            ) {
-                thumbnailContent(Modifier.padding(horizontal = 32.dp, vertical = 8.dp))
-            }
-
-            controlsContent(
-                Modifier
-                    .padding(vertical = 8.dp)
-                    .fillMaxWidth()
-                    .weight(1f)
-            )
-        }
-
-        var audioDialogOpen by rememberSaveable { mutableStateOf(false) }
+        } else RavynNowPlaying(
+            artwork = metadata?.artworkUri?.thumbnail(Dimensions.thumbnails.player.song.px),
+            media = mediaItem?.toUiMedia(duration),
+            binder = binder,
+            title = metadata?.title?.toString().orEmpty(),
+            artist = metadata?.artist?.toString().orEmpty(),
+            likedAt = likedAt,
+            setLikedAt = { likedAt = it },
+            shouldBePlaying = shouldBePlaying,
+            position = position,
+            onCollapse = layoutState::collapseSoft,
+            onMore = {
+                val item = mediaItem
+                val service = binder
+                if (item != null && service != null) menuState.display {
+                    PlayerMenu(
+                        onDismiss = menuState::hide,
+                        mediaItem = item,
+                        binder = service,
+                        onShowSpeedDialog = { audioDialogOpen = true },
+                        onShowNormalizationDialog = {
+                            boostDialogOpen = true
+                        }.takeIf { volumeNormalization }
+                    )
+                }
+            },
+            onShowLyrics = { isShowingLyrics = true },
+            onShowQueue = playerBottomSheetState::expandSoft,
+            thumbnailContent = thumbnailContent,
+            modifier = containerModifier.fillMaxSize()
+        )
 
         if (audioDialogOpen) SliderDialog(
             onDismiss = { audioDialogOpen = false },
@@ -499,8 +513,6 @@ fun Player(
                 )
             }
         }
-
-        var boostDialogOpen by rememberSaveable { mutableStateOf(false) }
 
         if (boostDialogOpen) {
             fun submit(state: Float) = transaction {
