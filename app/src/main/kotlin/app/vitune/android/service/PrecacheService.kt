@@ -168,8 +168,7 @@ class PrecacheService : DownloadService(
             /* upstreamFactory = */ PlayerService.createYouTubeDataSourceResolverFactory(
                 findMediaItem = { null },
                 context = this,
-                cache = cache,
-                chunkLength = null
+                cache = cache
             ),
             /* executor = */ executor
         ).apply {

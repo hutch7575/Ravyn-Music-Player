@@ -113,7 +113,6 @@ fun HomeAlbums(
                     thumbnailSize = Dimensions.thumbnails.album,
                     modifier = Modifier
                         .clickable(onClick = { onAlbumClick(album) })
-                        .animateItem()
                 )
             }
         }

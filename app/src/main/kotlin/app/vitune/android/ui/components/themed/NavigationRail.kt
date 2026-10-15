@@ -278,11 +278,17 @@ inline fun NavigationRail(
                     visible = tabIndex == index || tab.key !in hiddenTabs,
                     label = ""
                 ) {
-                    val dothAlpha by transition.animateFloat(label = "") {
+                    val dothAlpha by transition.animateFloat(
+                        transitionSpec = { androidx.compose.animation.core.tween(150) },
+                        label = "Tab indicator"
+                    ) {
                         if (it == index) 1f else 0f
                     }
 
-                    val textColor by transition.animateColor(label = "") {
+                    val textColor by transition.animateColor(
+                        transitionSpec = { androidx.compose.animation.core.tween(150) },
+                        label = "Tab label"
+                    ) {
                         if (it == index) colorPalette.text else colorPalette.textDisabled
                     }
 

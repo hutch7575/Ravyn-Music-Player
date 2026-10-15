@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -63,20 +65,31 @@ fun appearance(
         mode == ColorMode.Dark || (mode == ColorMode.System && isSystemInDarkTheme)
     }
 
-    val colorPalette = rememberSaveable(
-        source,
-        darkness,
-        isDark,
-        materialAccentColor,
-        sampleBitmap
-    ) {
-        colorPaletteOf(
-            source = source,
-            darkness = darkness,
-            isDark = isDark,
-            materialAccentColor = materialAccentColor,
-            sampleBitmap = sampleBitmap
+    // Album-art quantization can take tens of milliseconds. Do not run
+    // Palette.generate() during a Compose frame every time a song changes.
+    // Keep the current palette until the next one has finished in the worker.
+    var colorPalette by remember(source, darkness, isDark, materialAccentColor) {
+        mutableStateOf(
+            colorPaletteOf(
+                source = source,
+                darkness = darkness,
+                isDark = isDark,
+                materialAccentColor = materialAccentColor,
+                sampleBitmap = null
+            )
         )
+    }
+
+    LaunchedEffect(source, darkness, isDark, materialAccentColor, sampleBitmap) {
+        colorPalette = withContext(Dispatchers.Default) {
+            colorPaletteOf(
+                source = source,
+                darkness = darkness,
+                isDark = isDark,
+                materialAccentColor = materialAccentColor,
+                sampleBitmap = sampleBitmap
+            )
+        }
     }
 
     return rememberAppearance(
