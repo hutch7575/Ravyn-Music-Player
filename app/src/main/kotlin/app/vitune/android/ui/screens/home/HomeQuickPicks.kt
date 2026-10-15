@@ -1,6 +1,11 @@
 package app.vitune.android.ui.screens.home
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -24,14 +29,23 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import app.vitune.android.utils.thumbnail
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -46,6 +60,7 @@ import app.vitune.android.query
 import app.vitune.android.ui.components.LocalMenuState
 import app.vitune.android.ui.components.ShimmerHost
 import app.vitune.android.ui.components.themed.FloatingActionsContainerWithScrollToTop
+import app.vitune.android.ui.components.themed.RavynGreetingHeader
 import app.vitune.android.ui.components.themed.Header
 import app.vitune.android.ui.components.themed.NonQueuedMediaItemMenu
 import app.vitune.android.ui.components.themed.TextPlaceholder
@@ -89,6 +104,12 @@ fun QuickPicks(
     val windowInsets = LocalPlayerAwareWindowInsets.current
 
     var trending by persist<Song?>("home/trending")
+    var recentSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        Database.events().collect { events ->
+            recentSongs = events.mapNotNull { it.song }.distinctBy { it.id }.take(12)
+        }
+    }
 
     var relatedPageResult by persist<Result<Innertube.RelatedPage?>?>(tag = "home/relatedPageResult")
 
@@ -167,12 +188,54 @@ fun QuickPicks(
                         .asPaddingValues()
                 )
         ) {
-            Header(
-                title = "Listen again",
-                modifier = Modifier.padding(endPaddingValues)
-            )
+            RavynGreetingHeader(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp))
 
             relatedPageResult?.getOrNull()?.let { related ->
+                related.artists?.let { artists ->
+                    BasicText(
+                        text = "Your favorite artists",
+                        style = typography.m.semiBold,
+                        modifier = sectionTextModifier
+                    )
+
+                    LazyRow(contentPadding = endPaddingValues) {
+                        items(
+                            items = artists,
+                            key = Innertube.ArtistItem::key
+                        ) { artist ->
+                            ArtistItem(
+                                artist = artist,
+                                thumbnailSize = Dimensions.thumbnails.artist,
+                                alternative = true,
+                                modifier = Modifier.clickable { onArtistClick(artist) }
+                            )
+                        }
+                    }
+                }
+
+                related.playlists?.let { playlists ->
+                    BasicText(
+                        text = "Made for you",
+                        style = typography.m.semiBold,
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 24.dp, bottom = 8.dp)
+                    )
+
+                    LazyRow(contentPadding = endPaddingValues) {
+                        items(
+                            items = playlists,
+                            key = Innertube.PlaylistItem::key
+                        ) { playlist ->
+                            PlaylistItem(
+                                playlist = playlist,
+                                thumbnailSize = Dimensions.thumbnails.playlist,
+                                alternative = true,
+                                modifier = Modifier.clickable { onPlaylistClick(playlist) }
+                            )
+                        }
+                    }
+                }
                 related.albums?.let { albums ->
                     BasicText(
                         text = "Albums for you",
@@ -195,8 +258,31 @@ fun QuickPicks(
                     }
                 }
 
+
+                if (recentSongs.isNotEmpty()) {
+                    BasicText(
+                        text = "Recently played",
+                        style = typography.m.semiBold,
+                        modifier = sectionTextModifier
+                    )
+                    LazyRow(
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(recentSongs, key = Song::id) { song ->
+                            RavynRecentSongTile(
+                                song = song,
+                                onClick = {
+                                    binder?.stopRadio()
+                                    binder?.player?.forcePlay(song.asMediaItem)
+                                }
+                            )
+                        }
+                    }
+                }
+
                 BasicText(
-                    text = "Made for you",
+                    text = "Tracks for you",
                     style = typography.m.semiBold,
                     modifier = sectionTextModifier
                 )
@@ -288,51 +374,6 @@ fun QuickPicks(
                     }
                 }
 
-                related.artists?.let { artists ->
-                    BasicText(
-                        text = "Artists to explore",
-                        style = typography.m.semiBold,
-                        modifier = sectionTextModifier
-                    )
-
-                    LazyRow(contentPadding = endPaddingValues) {
-                        items(
-                            items = artists,
-                            key = Innertube.ArtistItem::key
-                        ) { artist ->
-                            ArtistItem(
-                                artist = artist,
-                                thumbnailSize = Dimensions.thumbnails.artist,
-                                alternative = true,
-                                modifier = Modifier.clickable { onArtistClick(artist) }
-                            )
-                        }
-                    }
-                }
-
-                related.playlists?.let { playlists ->
-                    BasicText(
-                        text = stringResource(R.string.recommended_playlists),
-                        style = typography.m.semiBold,
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp)
-                            .padding(top = 24.dp, bottom = 8.dp)
-                    )
-
-                    LazyRow(contentPadding = endPaddingValues) {
-                        items(
-                            items = playlists,
-                            key = Innertube.PlaylistItem::key
-                        ) { playlist ->
-                            PlaylistItem(
-                                playlist = playlist,
-                                thumbnailSize = Dimensions.thumbnails.playlist,
-                                alternative = true,
-                                modifier = Modifier.clickable { onPlaylistClick(playlist) }
-                            )
-                        }
-                    }
-                }
 
                 Unit
             } ?: relatedPageResult?.exceptionOrNull()?.let {
@@ -387,6 +428,36 @@ fun QuickPicks(
             scrollState = scrollState,
             icon = R.drawable.search,
             onClick = onSearchClick
+        )
+    }
+}
+
+@Composable
+private fun RavynRecentSongTile(song: Song, onClick: () -> Unit) {
+    val palette = LocalAppearance.current.colorPalette
+    Column(
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+        modifier = Modifier.width(130.dp).clickable(onClick = onClick)
+    ) {
+        AsyncImage(
+            model = song.thumbnailUrl?.thumbnail(320),
+            contentDescription = song.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(130.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(palette.background2)
+        )
+        BasicText(
+            text = song.title,
+            style = TextStyle(
+                color = palette.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold
+            ),
+            maxLines = 1, overflow = TextOverflow.Ellipsis
+        )
+        BasicText(
+            text = song.artistsText.orEmpty(),
+            style = TextStyle(color = palette.textSecondary, fontSize = 11.sp),
+            maxLines = 1, overflow = TextOverflow.Ellipsis
         )
     }
 }
