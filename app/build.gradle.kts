@@ -10,9 +10,9 @@ plugins {
 }
 
 android {
-    val appId = "${project.group}.android"
+    val appNamespace = "${project.group}.android"
 
-    namespace = appId
+    namespace = appNamespace
     compileSdk = 37
 
     val abis = listOf("arm64-v8a", "x86_64")
@@ -20,7 +20,7 @@ android {
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
-        applicationId = appId
+        applicationId = "app.vitune.classic"
 
         minSdk = 24
         targetSdk = 37
@@ -64,14 +64,14 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-DEBUG"
-            manifestPlaceholders["appName"] = "ViTune Debug"
+            manifestPlaceholders["appName"] = "ViTune Classic Debug"
         }
 
         release {
             versionNameSuffix = "-RELEASE"
             isMinifyEnabled = true
             isShrinkResources = true
-            manifestPlaceholders["appName"] = "ViTune"
+            manifestPlaceholders["appName"] = "ViTune Classic"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -84,7 +84,7 @@ android {
 
             applicationIdSuffix = ".nightly"
             versionNameSuffix = "-NIGHTLY"
-            manifestPlaceholders["appName"] = "ViTune Nightly"
+            manifestPlaceholders["appName"] = "ViTune Classic Nightly"
             signingConfig = signingConfigs.findByName("ci")
         }
     }
