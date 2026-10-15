@@ -1,0 +1,27 @@
+name: Export published Ravyn APK for download
+on:
+  push:
+    branches:
+      - chore/export-v1.0.0-apk
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download official release APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p release
+          gh release download v1.0.0 --repo "$GITHUB_REPOSITORY" --pattern "Ravyn-v1.0.0.apk" --dir release
+          test -s release/Ravyn-v1.0.0.apk
+          sha256sum release/Ravyn-v1.0.0.apk
+      - name: Upload signed release APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ravyn-v1.0.0-published-apk
+          path: release/Ravyn-v1.0.0.apk
+          if-no-files-found: error
+          retention-days: 1
