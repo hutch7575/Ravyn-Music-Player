@@ -68,6 +68,7 @@ import app.vitune.android.models.Artist
 import app.vitune.android.models.Playlist
 import app.vitune.android.models.PlaylistPreview
 import app.vitune.android.models.Song
+import app.vitune.android.preferences.DataPreferences
 import app.vitune.android.query
 import app.vitune.android.utils.asMediaItem
 import app.vitune.android.utils.forcePlay
@@ -82,6 +83,14 @@ import app.vitune.providers.innertube.Innertube
 import app.vitune.providers.innertube.models.NavigationEndpoint
 import app.vitune.providers.innertube.models.bodies.NextBody
 import app.vitune.providers.innertube.requests.relatedPage
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
+
+
+/** An empty successful network result should not replace a populated cache. */
+private fun Innertube.RelatedPage.hasRavynRecommendations(): Boolean =
+    !artists.isNullOrEmpty() || !songs.isNullOrEmpty() ||
+        !albums.isNullOrEmpty() || !playlists.isNullOrEmpty()
 
 /** Brand-new Ravyn portrait shell, retaining only existing data and playback APIs. */
 @Composable
@@ -116,6 +125,9 @@ fun RavynRoot(
     var playlistsLoaded by remember { mutableStateOf(false) }
     var albumsLoaded by remember { mutableStateOf(false) }
     var relatedLoaded by remember { mutableStateOf(false) }
+    var trendingSeed by remember { mutableStateOf<String?>(null) }
+    var relatedError by remember { mutableStateOf(false) }
+    var refreshRecommendations by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) { Database.favorites().collect { liked = it } }
     LaunchedEffect(Unit) {
@@ -150,19 +162,51 @@ fun RavynRoot(
                 playlistsLoaded = true
             }
     }
-    LaunchedEffect(historyLoaded, recent.firstOrNull()?.id) {
-        if (!historyLoaded) return@LaunchedEffect
-        val videoId = recent.firstOrNull()?.id
-        if (videoId == null) {
-            related = null
-            relatedLoaded = true
-        } else {
-            if (!relatedLoaded) related = null
-            related = runCatching {
-                Innertube.relatedPage(NextBody(videoId = videoId))?.getOrNull()
-            }.getOrNull()
-            relatedLoaded = true
+    // Preserve the Quick Picks cache from the existing app. It provides a
+    // useful Home feed immediately after opening Ravyn, even if the network
+    // is slow and the play history has not been collected yet.
+    LaunchedEffect(Unit) {
+        if (DataPreferences.shouldCacheQuickPicks) {
+            val cached = DataPreferences.cachedQuickPicks
+            if (cached.hasRavynRecommendations()) {
+                related = cached
+                relatedLoaded = true
+            }
         }
+    }
+
+    // A fresh install may have no listening history at all. The former ViTune
+    // Home used trending tracks (or a stable discovery seed) for exactly this case.
+    LaunchedEffect(Unit) {
+        Database.trending().collect { tracks ->
+            trendingSeed = tracks.firstOrNull()?.id
+        }
+    }
+
+    LaunchedEffect(historyLoaded, recent.firstOrNull()?.id, trendingSeed,
+        refreshRecommendations, DataPreferences.quickPicksSource) {
+        if (!historyLoaded) return@LaunchedEffect
+        val seed = when (DataPreferences.quickPicksSource) {
+            DataPreferences.QuickPicksSource.LastInteraction ->
+                recent.firstOrNull { !it.id.startsWith("local:") }?.id ?: trendingSeed
+            DataPreferences.QuickPicksSource.Trending ->
+                trendingSeed ?: recent.firstOrNull { !it.id.startsWith("local:") }?.id
+        } ?: "J7p4bzqLvCw"
+
+        // Never clear valid artwork and recommendations just to show a loader.
+        val fresh = runCatching {
+            Innertube.relatedPage(NextBody(videoId = seed))?.getOrNull()
+        }.getOrNull()
+        if (fresh != null && fresh.hasRavynRecommendations()) {
+            related = fresh
+            relatedError = false
+            if (DataPreferences.shouldCacheQuickPicks) {
+                DataPreferences.cachedQuickPicks = fresh
+            }
+        } else {
+            relatedError = related?.hasRavynRecommendations() != true
+        }
+        relatedLoaded = true
     }
 
     if (showCreate) AlertDialog(
@@ -240,7 +284,8 @@ fun RavynRoot(
                 playlists = playlists, related = related,
                 historyLoaded = historyLoaded, artistsLoaded = artistsLoaded,
                 playlistsLoaded = playlistsLoaded, albumsLoaded = albumsLoaded,
-                relatedLoaded = relatedLoaded,
+                relatedLoaded = relatedLoaded, relatedError = relatedError,
+                onRetry = { refreshRecommendations += 1 },
                 onArtist = onArtist, onAlbum = onAlbum,
                 onOnlinePlaylist = onOnlinePlaylist, onLocalPlaylist = onLocalPlaylist,
                 onDiscover = onDiscover,
@@ -301,6 +346,8 @@ private fun RavynHome(
     playlistsLoaded: Boolean,
     albumsLoaded: Boolean,
     relatedLoaded: Boolean,
+    relatedError: Boolean,
+    onRetry: () -> Unit,
     onArtist: (String) -> Unit,
     onAlbum: (String) -> Unit,
     onOnlinePlaylist: (Innertube.PlaylistItem) -> Unit,
@@ -466,12 +513,29 @@ private fun RavynHome(
                 }
             }
         }
-        if (historyLoaded && relatedLoaded && recent.isEmpty() &&
-            playlists.isEmpty() && artists.isEmpty()) item {
-            Column(Modifier.padding(24.dp)) {
-                RavynLabel("Start listening", 21, bold = true)
-                RavynLabel("Search for music to build your recommendations.", 13,
-                    RavynStyle.secondary, lines = 2)
+        if (relatedLoaded && recent.isEmpty() && playlists.isEmpty() &&
+            artists.isEmpty() && albums.isEmpty() &&
+            related?.hasRavynRecommendations() != true) item {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(13.dp),
+                modifier = Modifier.fillMaxWidth().padding(
+                    horizontal = 18.dp, vertical = 18.dp
+                )
+            ) {
+                RavynLabel(
+                    if (relatedError) "Unable to load recommendations"
+                    else "Discover something new",
+                    19, bold = true
+                )
+                RavynLabel(
+                    if (relatedError) "Check your internet connection, or try refreshing."
+                    else "Explore music to build your personal recommendations.",
+                    13, RavynStyle.secondary, lines = 2
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    RavynPill("Explore music", true, onDiscover)
+                    RavynPill("Retry", false, onRetry)
+                }
             }
         }
     }
