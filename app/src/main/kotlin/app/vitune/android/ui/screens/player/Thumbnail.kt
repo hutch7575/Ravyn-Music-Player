@@ -49,6 +49,10 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.palette.graphics.Palette
+import coil3.toBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.media3.common.C
 import app.vitune.android.Database
@@ -90,7 +94,8 @@ fun Thumbnail(
     setShouldShowSynchronizedLyrics: (Boolean) -> Unit = {
         PlayerPreferences.isShowingSynchronizedLyrics = it
     },
-    showLyricsControls: Boolean = true
+    showLyricsControls: Boolean = true,
+    onArtworkAccent: (songId: String, color: Color) -> Unit = { _, _ -> }
 ) {
     val binder = LocalPlayerServiceBinder.current
     val [colorPalette, _, _, thumbnailShape] = LocalAppearance.current
@@ -165,7 +170,7 @@ fun Thumbnail(
 
         if (currentWindow != null) Box(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .clip(if (isInPip) RectangleShape else thumbnailShape)
                 .background(colorPalette.background0)
                 .shadow(
@@ -202,7 +207,28 @@ fun Thumbnail(
                 model = currentWindow.mediaItem.mediaMetadata.artworkUri
                     ?.thumbnail((Dimensions.thumbnails.player.song - 64.dp).px),
                 onLoading = { artworkLoading = true; artworkFailed = false },
-                onSuccess = { artworkLoading = false; artworkFailed = false },
+                onSuccess = { state ->
+                    artworkLoading = false
+                    artworkFailed = false
+                    val songId = currentWindow.mediaItem.mediaId
+                    coroutineScope.launch {
+                        val sampled = withContext(Dispatchers.Default) {
+                            runCatching {
+                                val bitmap = state.result.image.toBitmap()
+                                val palette = Palette.from(bitmap)
+                                    .resizeBitmapArea(12_000)
+                                    .maximumColorCount(8)
+                                    .generate()
+                                val rgb = palette.vibrantSwatch?.rgb
+                                    ?: palette.mutedSwatch?.rgb
+                                    ?: palette.dominantSwatch?.rgb
+                                    ?: 0xFF8B67CA.toInt()
+                                Color(rgb)
+                            }.getOrNull()
+                        }
+                        sampled?.let { onArtworkAccent(songId, it) }
+                    }
+                },
                 onError = { artworkLoading = false; artworkFailed = true },
                 contentDescription = null,
                 contentScale = contentScale,
@@ -223,7 +249,7 @@ fun Thumbnail(
                         )
                     }
                     .align(Alignment.Center)
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .let {
                         if (blurRadius == 0.dp) it else it.blur(radius = blurRadius)
                     }
