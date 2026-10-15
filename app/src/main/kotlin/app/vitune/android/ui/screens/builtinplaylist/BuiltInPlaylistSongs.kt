@@ -292,6 +292,18 @@ fun BuiltInPlaylistSongs(
                     song = song,
                     index = if (builtInPlaylist == BuiltInPlaylist.Top) index else null,
                     thumbnailSize = Dimensions.thumbnails.song,
+                    trailingContent = if (builtInPlaylist == BuiltInPlaylist.Favorites) {
+                        {
+                            Image(
+                                painter = painterResource(R.drawable.heart),
+                                contentDescription = "Remove from liked songs",
+                                colorFilter = ColorFilter.tint(colorPalette.accent),
+                                modifier = Modifier.size(20.dp).clickable {
+                                    app.vitune.android.query { Database.like(song.id, null) }
+                                }
+                            )
+                        }
+                    } else null,
                     isPlaying = playing && currentMediaId == song.id
                 )
             }

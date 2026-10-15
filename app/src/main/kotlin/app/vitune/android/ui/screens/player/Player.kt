@@ -216,7 +216,7 @@ fun Player(
                         // advanced, making the layout visually noisy.
                         drawRect(
                             color = colorPalette.accent,
-                            topLeft = Offset(0f, size.height - 2.dp.toPx()),
+                            topLeft = Offset(0f, 0f),
                             size = Size(
                                 width = if (duration > 0L)
                                     (size.width * (position.toFloat() / duration)).coerceIn(0f, size.width)
