@@ -30,7 +30,6 @@ import app.vitune.android.service.PlayerMediaBrowserService
 import app.vitune.android.service.PrecacheService
 import app.vitune.android.ui.screens.Route
 import app.vitune.android.ui.screens.logsRoute
-import app.vitune.android.utils.intent
 import app.vitune.android.utils.isIgnoringBatteryOptimizations
 import app.vitune.android.utils.toast
 import app.vitune.core.ui.utils.isAtLeastAndroid6
@@ -170,7 +169,7 @@ fun OtherSettings() {
                     reloading = true
                     scope.launch {
                         runCatching {
-                            context.stopService(context.intent<PrecacheService>())
+                            context.stopService(Intent(context, PrecacheService::class.java))
                             binder?.restartForegroundOrStop()
                             withContext(Dispatchers.IO) { DatabaseDependency.reload() }
                         }.onFailure { it.printStackTrace() }
