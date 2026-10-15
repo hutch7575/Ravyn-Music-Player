@@ -57,6 +57,7 @@ import java.util.UUID
 fun PipedPlaylistSongList(
     session: Session,
     playlistId: UUID,
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val (colorPalette) = LocalAppearance.current
@@ -77,102 +78,22 @@ fun PipedPlaylistSongList(
         }
     }
 
-    val lazyListState = rememberLazyListState()
 
-    val thumbnailContent = adaptiveThumbnailContent(
-        isLoading = playlist == null,
-        url = playlist?.thumbnailUrl?.toString()
-    )
-
-    val [currentMediaId, playing] = playingSong(binder)
-
-    LayoutWithAdaptiveThumbnail(
-        thumbnailContent = thumbnailContent,
-        modifier = modifier
-    ) {
-        Box {
-            LazyColumn(
-                state = lazyListState,
-                contentPadding = LocalPlayerAwareWindowInsets.current
-                    .only(WindowInsetsSides.Vertical + WindowInsetsSides.End).asPaddingValues(),
-                modifier = Modifier
-                    .background(colorPalette.background0)
-                    .fillMaxSize()
-            ) {
-                item(
-                    key = "header",
-                    contentType = 0
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        if (playlist == null) HeaderPlaceholder(modifier = Modifier.shimmer())
-                        else Header(title = playlist?.name ?: stringResource(R.string.unknown)) {
-                            SecondaryTextButton(
-                                text = stringResource(R.string.enqueue),
-                                enabled = playlist?.videos?.isNotEmpty() == true,
-                                onClick = {
-                                    mediaItems?.let { binder?.player?.enqueue(it) }
-                                }
-                            )
-
-                            Spacer(modifier = Modifier.weight(1f))
-
-                            mediaItems?.let { PlaylistDownloadIcon(it) }
-                        }
-
-                        if (!isLandscape) thumbnailContent()
-                    }
-                }
-
-                itemsIndexed(items = playlist?.videos ?: emptyList()) { index, song ->
-                    song.asMediaItem?.let { mediaItem ->
-                        SongItem(
-                            song = mediaItem,
-                            thumbnailSize = Dimensions.thumbnails.song,
-                            modifier = Modifier.combinedClickable(
-                                onLongClick = {
-                                    menuState.display {
-                                        NonQueuedMediaItemMenu(
-                                            onDismiss = menuState::hide,
-                                            mediaItem = mediaItem
-                                        )
-                                    }
-                                },
-                                onClick = {
-                                    playlist?.videos?.mapNotNull(Playlist.Video::asMediaItem)
-                                        ?.let { mediaItems ->
-                                            binder?.stopRadio()
-                                            binder?.player?.forcePlayAtIndex(mediaItems, index)
-                                        }
-                                }
-                            ),
-                            isPlaying = playing && currentMediaId == song.id
-                        )
-                    }
-                }
-
-                if (playlist == null) item(key = "loading") {
-                    ShimmerHost(modifier = Modifier.fillParentMaxSize()) {
-                        repeat(4) {
-                            SongItemPlaceholder(thumbnailSize = Dimensions.thumbnails.song)
-                        }
-                    }
-                }
-            }
-
-            FloatingActionsContainerWithScrollToTop(
-                lazyListState = lazyListState,
-                icon = R.drawable.shuffle,
-                onClick = {
-                    playlist?.videos?.let { songs ->
-                        if (songs.isNotEmpty()) {
-                            binder?.stopRadio()
-                            binder?.player?.forcePlayFromBeginning(
-                                songs.shuffled().mapNotNull(Playlist.Video::asMediaItem)
-                            )
-                        }
-                    }
-                }
-            )
+    app.vitune.android.ui.ravyn.RavynMediaPlaylist(
+        title = playlist?.name ?: "Playlist",
+        artwork = playlist?.thumbnailUrl?.toString(),
+        media = mediaItems.orEmpty(),
+        onBack = onBack,
+        onPlay = { index ->
+            binder?.stopRadio()
+            binder?.player?.forcePlayAtIndex(mediaItems.orEmpty(), index)
+        },
+        onShuffle = {
+            binder?.stopRadio()
+            binder?.player?.forcePlayFromBeginning(mediaItems.orEmpty().shuffled())
+        },
+        onQueue = {
+            binder?.player?.enqueue(mediaItems.orEmpty())
         }
-    }
+    )
 }
