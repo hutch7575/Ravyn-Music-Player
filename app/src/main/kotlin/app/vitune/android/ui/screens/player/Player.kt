@@ -48,6 +48,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -418,6 +419,9 @@ fun Player(
             )
         }
 
+        var audioDialogOpen by rememberSaveable { mutableStateOf(false) }
+        var boostDialogOpen by rememberSaveable { mutableStateOf(false) }
+
         if (isLandscape) Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = containerModifier.padding(top = 32.dp)
@@ -437,26 +441,36 @@ fun Player(
                     .fillMaxHeight()
                     .weight(1f)
             )
-        } else Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = containerModifier.padding(top = 54.dp)
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.weight(1.25f)
-            ) {
-                thumbnailContent(Modifier.padding(horizontal = 32.dp, vertical = 8.dp))
-            }
-
-            controlsContent(
-                Modifier
-                    .padding(vertical = 8.dp)
-                    .fillMaxWidth()
-                    .weight(1f)
-            )
-        }
-
-        var audioDialogOpen by rememberSaveable { mutableStateOf(false) }
+        } else RavynNowPlaying(
+            media = mediaItem?.toUiMedia(duration),
+            binder = binder,
+            title = metadata?.title?.toString().orEmpty(),
+            artist = metadata?.artist?.toString().orEmpty(),
+            likedAt = likedAt,
+            setLikedAt = { likedAt = it },
+            shouldBePlaying = shouldBePlaying,
+            position = position,
+            onCollapse = layoutState::collapseSoft,
+            onMore = {
+                val item = mediaItem
+                val service = binder
+                if (item != null && service != null) menuState.display {
+                    PlayerMenu(
+                        onDismiss = menuState::hide,
+                        mediaItem = item,
+                        binder = service,
+                        onShowSpeedDialog = { audioDialogOpen = true },
+                        onShowNormalizationDialog = {
+                            boostDialogOpen = true
+                        }.takeIf { volumeNormalization }
+                    )
+                }
+            },
+            onShowLyrics = { isShowingLyrics = true },
+            onShowQueue = playerBottomSheetState::expandSoft,
+            thumbnailContent = thumbnailContent,
+            modifier = containerModifier.fillMaxSize()
+        )
 
         if (audioDialogOpen) SliderDialog(
             onDismiss = { audioDialogOpen = false },
@@ -499,8 +513,6 @@ fun Player(
                 )
             }
         }
-
-        var boostDialogOpen by rememberSaveable { mutableStateOf(false) }
 
         if (boostDialogOpen) {
             fun submit(state: Float) = transaction {
@@ -551,20 +563,15 @@ fun Player(
         if (binder != null) Queue(
             layoutState = playerBottomSheetState,
             binder = binder,
-            beforeContent = {
-                if (playerLayout == PlayerPreferences.PlayerLayout.New) IconButton(
-                    onClick = { trackLoopEnabled = !trackLoopEnabled },
-                    icon = R.drawable.infinite,
-                    enabled = trackLoopEnabled,
-                    modifier = Modifier
-                        .padding(vertical = 8.dp)
-                        .size(20.dp)
-                ) else Spacer(modifier = Modifier.width(20.dp))
-            },
+            collapsedBarColor = if (isLandscape) null else Color(0xFF17213E),
+            collapsedIconColor = if (isLandscape) null else Color.White,
+            // Track repeat already has a working control in RavynNowPlaying.
+            // The old infinity shortcut disabled itself when repeat was off.
+            beforeContent = { Spacer(modifier = Modifier.width(20.dp)) },
             afterContent = {
                 IconButton(
                     icon = R.drawable.ellipsis_horizontal,
-                    color = colorPalette.text,
+                    color = if (isLandscape) colorPalette.text else Color.White,
                     onClick = {
                         mediaItem?.let {
                             menuState.display {

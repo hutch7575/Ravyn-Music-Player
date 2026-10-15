@@ -5,7 +5,7 @@ import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection.
 import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection.Companion.Right
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.SeekableTransitionState
 import androidx.compose.animation.core.Spring
@@ -26,9 +26,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -37,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -46,6 +49,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.media3.common.C
 import app.vitune.android.Database
 import app.vitune.android.LocalPlayerServiceBinder
@@ -108,7 +112,7 @@ fun Thumbnail(
     AnimatedContent(
         targetState = window,
         transitionSpec = {
-            val duration = 500
+            val duration = 240
             val initial = initialState
             val target = targetState
 
@@ -119,7 +123,7 @@ fun Thumbnail(
             )
 
             val sizeTransform = SizeTransform(clip = false) { _, _ ->
-                tween(durationMillis = duration, delayMillis = duration)
+                tween(durationMillis = duration, easing = FastOutSlowInEasing)
             }
 
             val direction = if (target.firstPeriodIndex < initial.firstPeriodIndex) Right else Left
@@ -127,10 +131,10 @@ fun Thumbnail(
             ContentTransform(
                 targetContentEnter = slideIntoContainer(direction, tween(duration)) +
                     fadeIn(tween(duration)) +
-                    scaleIn(tween(duration), 0.85f),
+                    scaleIn(tween(duration, easing = FastOutSlowInEasing), 0.97f),
                 initialContentExit = slideOutOfContainer(direction, tween(duration)) +
                     fadeOut(tween(duration)) +
-                    scaleOut(tween(duration), 0.85f),
+                    scaleOut(tween(duration, easing = FastOutSlowInEasing), 0.97f),
                 sizeTransform = sizeTransform
             )
         },
@@ -146,16 +150,16 @@ fun Thumbnail(
         label = ""
     ) { currentWindow ->
         val shadowElevation by animateDpAsState(
-            targetValue = if (window == currentWindow) 8.dp else 0.dp,
+            targetValue = if (window == currentWindow) 2.dp else 0.dp,
             animationSpec = tween(
-                durationMillis = 500,
-                easing = LinearEasing
+                durationMillis = 210,
+                easing = FastOutSlowInEasing
             ),
             label = ""
         )
         val blurRadius by animateDpAsState(
-            targetValue = if (isShowingLyrics || error != null || isShowingStatsForNerds) 8.dp else 0.dp,
-            animationSpec = tween(500),
+            targetValue = if (error != null || isShowingStatsForNerds) 6.dp else 0.dp,
+            animationSpec = tween(200),
             label = ""
         )
 
@@ -163,6 +167,7 @@ fun Thumbnail(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(if (isInPip) RectangleShape else thumbnailShape)
+                .background(colorPalette.background0)
                 .shadow(
                     elevation = shadowElevation,
                     shape = thumbnailShape,
@@ -170,12 +175,35 @@ fun Thumbnail(
                 )
         ) {
             var height by remember { mutableIntStateOf(0) }
+            var artworkLoading by remember(currentWindow.mediaItem.mediaId) {
+                mutableStateOf(true)
+            }
+            var artworkFailed by remember(currentWindow.mediaItem.mediaId) {
+                mutableStateOf(false)
+            }
+
+            // Quiet Material-style loading indicator; never flash the app's raven logo.
+            if (artworkLoading) CircularProgressIndicator(
+                color = colorPalette.text.copy(alpha = 0.7f),
+                strokeWidth = 2.dp,
+                modifier = Modifier
+                    .size(28.dp)
+                    .align(Alignment.Center)
+            ) else if (artworkFailed) Image(
+                painter = painterResource(R.drawable.musical_notes),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(colorPalette.text.copy(alpha = 0.35f)),
+                modifier = Modifier
+                    .size(30.dp)
+                    .align(Alignment.Center)
+            )
 
             AsyncImage(
                 model = currentWindow.mediaItem.mediaMetadata.artworkUri
                     ?.thumbnail((Dimensions.thumbnails.player.song - 64.dp).px),
-                placeholder = painterResource(id = R.drawable.ic_launcher_foreground),
-                error = painterResource(id = R.drawable.ic_launcher_foreground),
+                onLoading = { artworkLoading = true; artworkFailed = false },
+                onSuccess = { artworkLoading = false; artworkFailed = false },
+                onError = { artworkLoading = false; artworkFailed = true },
                 contentDescription = null,
                 contentScale = contentScale,
                 modifier = Modifier
@@ -196,11 +224,9 @@ fun Thumbnail(
                     }
                     .align(Alignment.Center)
                     .fillMaxWidth()
-                    .background(colorPalette.background0)
                     .let {
                         if (blurRadius == 0.dp) it else it.blur(radius = blurRadius)
                     }
-                    .animateContentSize()
                     .onGloballyPositioned { coords ->
                         coords.size.height.let { if (it > 0) height = it }
                     }
@@ -217,7 +243,8 @@ fun Thumbnail(
                 modifier = Modifier.height(height.px.dp),
                 shouldShowSynchronizedLyrics = shouldShowSynchronizedLyrics,
                 setShouldShowSynchronizedLyrics = setShouldShowSynchronizedLyrics,
-                showControls = showLyricsControls
+                showControls = showLyricsControls,
+                ravynStyle = !isInPip
             )
 
             StatsForNerds(

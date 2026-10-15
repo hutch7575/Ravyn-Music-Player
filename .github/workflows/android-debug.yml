@@ -4,6 +4,7 @@ on:
     branches:
       - fix/playback-and-import-safety
       - feat/settings-and-in-app-updates
+      - feat/ravyn-now-playing
       - master
   workflow_dispatch:
 

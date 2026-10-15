@@ -7,6 +7,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -47,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -56,6 +58,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.media3.common.C
 import androidx.media3.common.MediaMetadata
 import app.vitune.android.Database
@@ -110,7 +113,7 @@ import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-private const val UPDATE_DELAY = 50L
+private const val UPDATE_DELAY = 120L
 
 @Composable
 fun Lyrics(
@@ -129,11 +132,12 @@ fun Lyrics(
     },
     shouldKeepScreenAwake: Boolean = PlayerPreferences.lyricsKeepScreenAwake,
     shouldUpdateLyrics: Boolean = true,
-    showControls: Boolean = true
+    showControls: Boolean = true,
+    ravynStyle: Boolean = false
 ) = AnimatedVisibility(
     visible = isDisplayed,
-    enter = fadeIn(),
-    exit = fadeOut()
+    enter = fadeIn(animationSpec = tween(180)),
+    exit = fadeOut(animationSpec = tween(150))
 ) {
     val currentEnsureSongInserted by rememberUpdatedState(ensureSongInserted)
     val currentMediaMetadataProvider by rememberUpdatedState(mediaMetadataProvider)
@@ -328,7 +332,7 @@ fun Lyrics(
                 detectTapGestures(onTap = { onDismiss() })
             }
             .fillMaxSize()
-            .background(colorPalette.overlay)
+            .background(if (ravynStyle) Color(0xEB14192B) else colorPalette.overlay)
     ) {
         val animatedHeight by animateDpAsState(
             targetValue = this.maxHeight, // `this` needed, thanks Android Lint!
@@ -408,7 +412,9 @@ fun Lyrics(
                     val currentSynchronizedLyrics = synchronizedLyrics ?: return@LaunchedEffect
                     val centerOffset = with(density) { (-animatedHeight / 3).roundToPx() }
 
-                    lazyListState.animateScrollToItem(
+                    // Jump to the initial active line rather than animating through
+                    // an entire song on first open.
+                    lazyListState.scrollToItem(
                         index = currentSynchronizedLyrics.index + 1,
                         scrollOffset = centerOffset
                     )
@@ -440,8 +446,11 @@ fun Lyrics(
                         items = synchronizedLyrics.sentences.values.toImmutableList()
                     ) { index, sentence ->
                         val color by animateColorAsState(
-                            if (index == synchronizedLyrics.index) Color.White
-                            else colorPalette.textDisabled
+                            targetValue = if (index == synchronizedLyrics.index) Color.White
+                            else if (ravynStyle) Color(0xFFAEB5CB)
+                            else colorPalette.textDisabled,
+                            animationSpec = tween(210),
+                            label = "Synced lyrics highlight"
                         )
 
                         if (sentence.isBlank()) Image(
@@ -453,8 +462,16 @@ fun Lyrics(
                                 .size(typography.xs.fontSize.dp)
                         ) else BasicText(
                             text = sentence,
-                            style = typography.xs.center.medium.color(color),
-                            modifier = Modifier.padding(vertical = 4.dp, horizontal = 32.dp)
+                            style = if (ravynStyle) typography.xs.center.medium.color(color).copy(
+                                fontSize = if (index == synchronizedLyrics.index) 20.sp else 17.sp,
+                                lineHeight = 27.sp,
+                                fontWeight = if (index == synchronizedLyrics.index)
+                                    FontWeight.SemiBold else FontWeight.Medium
+                            ) else typography.xs.center.medium.color(color),
+                            modifier = Modifier.padding(
+                                vertical = if (ravynStyle) 9.dp else 4.dp,
+                                horizontal = if (ravynStyle) 20.dp else 32.dp
+                            )
                         )
                     }
                     item(key = "footer", contentType = 0) {
@@ -463,12 +480,19 @@ fun Lyrics(
                 }
             } else BasicText(
                 text = lyrics?.fixed.orEmpty(),
-                style = typography.xs.center.medium.color(colorPalette.onOverlay),
+                style = if (ravynStyle) typography.xs.center.medium.color(Color(0xFFF0EFF9)).copy(
+                    fontSize = 18.sp,
+                    lineHeight = 30.sp,
+                    fontWeight = FontWeight.Medium
+                ) else typography.xs.center.medium.color(colorPalette.onOverlay),
                 modifier = Modifier
                     .verticalFadingEdge()
                     .verticalScroll(rememberScrollState())
                     .fillMaxWidth()
-                    .padding(vertical = maxHeight / 4, horizontal = 32.dp)
+                    .padding(
+                        vertical = if (ravynStyle) maxHeight / 5 else maxHeight / 4,
+                        horizontal = if (ravynStyle) 22.dp else 32.dp
+                    )
             )
         }
 
