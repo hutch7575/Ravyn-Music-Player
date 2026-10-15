@@ -2,6 +2,7 @@ package app.vitune.android.ui.screens.player
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -26,12 +27,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -57,6 +60,8 @@ import app.vitune.android.utils.forceSeekToPrevious
 @Composable
 fun RavynNowPlaying(
     media: UiMedia?,
+    artworkAccent: Color,
+    topInset: Dp,
     binder: PlayerService.Binder?,
     title: String,
     artist: String,
@@ -74,20 +79,25 @@ fun RavynNowPlaying(
     val compact = maxHeight < 590.dp
     val narrow = maxWidth < 355.dp
     val horizontalPadding = if (narrow) 20.dp else 28.dp
-    val accent = Color(0xFF9B69F8)
+    val animatedArtworkColor by animateColorAsState(
+        artworkAccent,
+        animationSpec = tween(380, easing = FastOutSlowInEasing),
+        label = "Artwork theme"
+    )
+    val accent = lerp(Color(0xFFB08CFF), animatedArtworkColor, 0.38f)
     val primaryText = Color.White
     val secondaryText = Color(0xFFD4D4E9)
 
-    // A cheap, stable Material-era backdrop: no full-screen image decoding or
-    // 56dp blur pass on each playback update. The actual cover stays in the thumbnail.
+    // Reuse the loaded album cover's colour palette. No extra artwork image
+    // and no costly real-time blur; only a few smoothly animated colours.
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF26345B),
-                        Color(0xFF192341),
+                        lerp(Color(0xFF1F2A44), animatedArtworkColor, 0.52f),
+                        lerp(Color(0xFF18213A), animatedArtworkColor, 0.19f),
                         Color(0xFF111829)
                     )
                 )
@@ -98,7 +108,7 @@ fun RavynNowPlaying(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = horizontalPadding)
+            .padding(top = topInset, start = horizontalPadding, end = horizontalPadding)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -176,34 +186,52 @@ fun RavynNowPlaying(
                 icon = if (likedAt == null) R.drawable.heart_outline else R.drawable.heart,
                 description = if (likedAt == null) "Like song" else "Unlike song",
                 onClick = { setLikedAt(if (likedAt == null) System.currentTimeMillis() else null) },
-                color = if (likedAt == null) Color.White else Color(0xFFBD91FF),
+                color = if (likedAt == null) Color.White else accent,
                 iconSize = 25.dp
             )
         }
 
         Spacer(Modifier.height(if (compact) 12.dp else 22.dp))
 
-        if (binder != null && media != null && media.duration > 0L) {
-            // Keep the existing seeking logic; use the classic static Material bar.
-            SeekBar(
-                binder = binder,
-                position = position,
-                media = media,
-                color = accent,
-                backgroundColor = Color.White.copy(alpha = 0.36f),
-                style = PlayerPreferences.SeekBarStyle.Static,
-                scrubberRadius = 6.dp
-            )
-            Spacer(Modifier.height(7.dp))
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                RavynTimeLabel(position)
-                RavynTimeLabel((media.duration - position).coerceAtLeast(0L), remaining = true)
+        // Never let the seekbar pop in and shift every control after buffering.
+        // The resting state has the same footprint as the interactive slider.
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxWidth().height(15.dp)
+        ) {
+            if (binder != null && media != null && media.duration > 0L &&
+                media.duration != androidx.media3.common.C.TIME_UNSET) {
+                SeekBar(
+                    binder = binder,
+                    position = position,
+                    media = media,
+                    color = accent,
+                    backgroundColor = Color.White.copy(alpha = 0.36f),
+                    style = PlayerPreferences.SeekBarStyle.Static,
+                    scrubberRadius = 6.dp
+                )
+            } else {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color.White.copy(alpha = 0.36f))
+                )
             }
-        } else {
-            Spacer(Modifier.height(24.dp))
+        }
+        Spacer(Modifier.height(5.dp))
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            RavynTimeLabel(position)
+            if (media != null && media.duration > 0L &&
+                media.duration != androidx.media3.common.C.TIME_UNSET) {
+                RavynTimeLabel((media.duration - position).coerceAtLeast(0L), remaining = true)
+            } else {
+                BasicText("--:--", style = TextStyle(color = secondaryText, fontSize = 12.sp))
+            }
         }
 
         Spacer(Modifier.height(if (compact) 12.dp else 22.dp))
@@ -217,7 +245,7 @@ fun RavynNowPlaying(
             RavynIcon(
                 icon = R.drawable.shuffle,
                 description = "Toggle shuffle",
-                color = if (player?.shuffleModeEnabled == true) Color(0xFFBD91FF) else primaryText,
+                color = if (player?.shuffleModeEnabled == true) accent else primaryText,
                 onClick = { if (player != null) player.shuffleModeEnabled = !player.shuffleModeEnabled },
                 modifier = Modifier.weight(1f),
                 iconSize = 22.dp
@@ -237,7 +265,7 @@ fun RavynNowPlaying(
                     .clip(CircleShape)
                     .background(
                         Brush.linearGradient(
-                            listOf(Color(0xFFA779FF), Color(0xFF6737D6))
+                            listOf(lerp(Color.White, accent, 0.78f), lerp(Color(0xFF6041C7), accent, 0.54f))
                         )
                     )
                     .clickable {
@@ -278,7 +306,7 @@ fun RavynNowPlaying(
             RavynIcon(
                 icon = if (PlayerPreferences.trackLoopEnabled) R.drawable.repeat_on else R.drawable.repeat,
                 description = "Toggle repeat track",
-                color = if (PlayerPreferences.trackLoopEnabled) Color(0xFFBD91FF) else primaryText,
+                color = if (PlayerPreferences.trackLoopEnabled) accent else primaryText,
                 onClick = { PlayerPreferences.trackLoopEnabled = !PlayerPreferences.trackLoopEnabled },
                 modifier = Modifier.weight(1f),
                 iconSize = 23.dp

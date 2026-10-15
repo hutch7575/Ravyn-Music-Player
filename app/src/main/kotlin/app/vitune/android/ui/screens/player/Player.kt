@@ -351,8 +351,11 @@ fun Player(
 
         if (isShowingLyricsDialog) LyricsDialog(onDismiss = { isShowingLyricsDialog = false })
 
+        // On portrait Ravyn has its own UP NEXT action. The legacy queue
+        // button bar should be completely hidden, not reserve 64dp of space.
         val playerBottomSheetState = rememberBottomSheetState(
-            dismissedBound = 64.dp + horizontalBottomPaddingValues.calculateBottomPadding(),
+            dismissedBound = if (isLandscape)
+                64.dp + horizontalBottomPaddingValues.calculateBottomPadding() else 0.dp,
             expandedBound = layoutState.expandedBound
         )
 
@@ -371,6 +374,7 @@ fun Player(
             )
             .padding(bottom = playerBottomSheetState.collapsedBound)
 
+        var artworkAccent by remember(mediaItem?.mediaId) { mutableStateOf(Color(0xFF8B67CA)) }
         val thumbnailContent: @Composable (modifier: Modifier) -> Unit = { innerModifier ->
             Pip(
                 numerator = 1,
@@ -385,6 +389,10 @@ fun Player(
                     onOpenDialog = { isShowingLyricsDialog = true },
                     likedAt = likedAt,
                     setLikedAt = { likedAt = it },
+                    onArtworkAccent = { songId, color ->
+                        // Ignore stale callbacks when another song starts loading.
+                        if (mediaItem?.mediaId == songId) artworkAccent = color
+                    },
                     modifier = Modifier
                         .nestedScroll(layoutState.preUpPostDownNestedScrollConnection)
                         .pinchToToggle(
@@ -443,6 +451,8 @@ fun Player(
             )
         } else RavynNowPlaying(
             media = mediaItem?.toUiMedia(duration),
+            artworkAccent = artworkAccent,
+            topInset = windowInsets.only(WindowInsetsSides.Top).asPaddingValues().calculateTopPadding(),
             binder = binder,
             title = metadata?.title?.toString().orEmpty(),
             artist = metadata?.artist?.toString().orEmpty(),
@@ -469,7 +479,8 @@ fun Player(
             onShowLyrics = { isShowingLyrics = true },
             onShowQueue = playerBottomSheetState::expandSoft,
             thumbnailContent = thumbnailContent,
-            modifier = containerModifier.fillMaxSize()
+            // Draw the artwork-derived backdrop behind the system status bar.
+            modifier = Modifier.clip(shape).fillMaxSize()
         )
 
         if (audioDialogOpen) SliderDialog(
