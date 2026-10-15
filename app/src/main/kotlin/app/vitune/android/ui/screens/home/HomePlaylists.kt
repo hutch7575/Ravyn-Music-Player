@@ -188,7 +188,6 @@ fun HomePlaylists(
                     thumbnailSize = Dimensions.thumbnails.playlist,
                     alternative = UIStatePreferences.playlistsAsGrid,
                     modifier = Modifier
-                        .animateItem()
                         .clickable { onBuiltInPlaylist(BuiltInPlaylist.Favorites) }
                 )
             }
@@ -202,7 +201,6 @@ fun HomePlaylists(
                     thumbnailSize = Dimensions.thumbnails.playlist,
                     alternative = UIStatePreferences.playlistsAsGrid,
                     modifier = Modifier
-                        .animateItem()
                         .clickable { onBuiltInPlaylist(BuiltInPlaylist.Offline) }
                 )
             }
@@ -219,7 +217,6 @@ fun HomePlaylists(
                     thumbnailSize = Dimensions.thumbnails.playlist,
                     alternative = UIStatePreferences.playlistsAsGrid,
                     modifier = Modifier
-                        .animateItem()
                         .clickable { onBuiltInPlaylist(BuiltInPlaylist.Top) }
                 )
             }
@@ -233,7 +230,6 @@ fun HomePlaylists(
                     thumbnailSize = Dimensions.thumbnails.playlist,
                     alternative = UIStatePreferences.playlistsAsGrid,
                     modifier = Modifier
-                        .animateItem()
                         .clickable { onBuiltInPlaylist(BuiltInPlaylist.History) }
                 )
             }
@@ -248,7 +244,6 @@ fun HomePlaylists(
                     alternative = UIStatePreferences.playlistsAsGrid,
                     modifier = Modifier
                         .clickable(onClick = { onPlaylistClick(playlistPreview.playlist) })
-                        .animateItem(fadeInSpec = null, fadeOutSpec = null)
                 )
             }
 
@@ -284,7 +279,6 @@ fun HomePlaylists(
                                             playlist
                                         )
                                     })
-                                    .animateItem(fadeInSpec = null, fadeOutSpec = null)
                             )
                         }
                     }

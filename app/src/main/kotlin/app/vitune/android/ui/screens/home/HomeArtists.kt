@@ -118,7 +118,6 @@ fun HomeArtistList(
                     alternative = true,
                     modifier = Modifier
                         .clickable(onClick = { onArtistClick(artist) })
-                        .animateItem(fadeInSpec = null, fadeOutSpec = null)
                 )
             }
         }
