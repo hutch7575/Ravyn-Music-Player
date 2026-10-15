@@ -5,6 +5,21 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +27,9 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -117,63 +135,125 @@ fun HomePlaylists(
         LazyVerticalGrid(
             state = lazyGridState,
             columns = if (UIStatePreferences.playlistsAsGrid)
-                GridCells.Adaptive(Dimensions.thumbnails.playlist + Dimensions.items.alternativePadding * 2)
+                GridCells.Adaptive(152.dp)
             else GridCells.Fixed(1),
             contentPadding = LocalPlayerAwareWindowInsets.current
                 .only(WindowInsetsSides.Vertical + WindowInsetsSides.End)
                 .asPaddingValues(),
-            horizontalArrangement = Arrangement.spacedBy(Dimensions.items.alternativePadding),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = if (UIStatePreferences.playlistsAsGrid)
-                Arrangement.spacedBy(Dimensions.items.alternativePadding)
+                Arrangement.spacedBy(14.dp)
             else Arrangement.Top,
             modifier = Modifier
                 .fillMaxSize()
                 .background(colorPalette.background0)
+                .padding(horizontal = 12.dp)
         ) {
             item(key = "header", contentType = 0, span = { GridItemSpan(maxLineSpan) }) {
-                Header(title = stringResource(R.string.playlists)) {
-                    SecondaryTextButton(
-                        text = stringResource(R.string.new_playlist),
-                        onClick = { isCreatingANewPlaylist = true }
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 18.dp)) {
+                    BasicText(
+                        text = "Your playlists",
+                        style = TextStyle(
+                            color = colorPalette.text,
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.45).sp
+                        )
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    BasicText(
+                        text = "Your favourites, collections and mixes",
+                        style = TextStyle(
+                            color = colorPalette.textSecondary,
+                            fontSize = 13.sp
+                        )
                     )
 
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    HeaderIconButton(
-                        icon = if (UIStatePreferences.playlistsAsGrid) R.drawable.grid else R.drawable.list,
-                        onClick = {
-                            UIStatePreferences.playlistsAsGrid = !UIStatePreferences.playlistsAsGrid
+                    Spacer(Modifier.height(18.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier
+                                .background(Color(0xFF7256CB), RoundedCornerShape(5.dp))
+                                .clickable { isCreatingANewPlaylist = true }
+                                .padding(horizontal = 17.dp, vertical = 12.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.add),
+                                contentDescription = null,
+                                colorFilter = ColorFilter.tint(Color.White),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            BasicText(
+                                text = "NEW PLAYLIST",
+                                style = TextStyle(
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 0.5.sp
+                                )
+                            )
                         }
-                    )
-
-                    VerticalDivider(modifier = Modifier.height(8.dp))
-
-                    HeaderIconButton(
-                        icon = R.drawable.medical,
-                        enabled = playlistSortBy == PlaylistSortBy.SongCount,
-                        onClick = { playlistSortBy = PlaylistSortBy.SongCount }
-                    )
-
-                    HeaderIconButton(
-                        icon = R.drawable.text,
-                        enabled = playlistSortBy == PlaylistSortBy.Name,
-                        onClick = { playlistSortBy = PlaylistSortBy.Name }
-                    )
-
-                    HeaderIconButton(
-                        icon = R.drawable.time,
-                        enabled = playlistSortBy == PlaylistSortBy.DateAdded,
-                        onClick = { playlistSortBy = PlaylistSortBy.DateAdded }
-                    )
-
-                    Spacer(modifier = Modifier.width(2.dp))
-
-                    HeaderIconButton(
-                        icon = R.drawable.arrow_up,
-                        color = colorPalette.text,
-                        onClick = { playlistSortOrder = !playlistSortOrder },
-                        modifier = Modifier.graphicsLayer { rotationZ = sortOrderIconRotation }
-                    )
+                        Spacer(Modifier.weight(1f))
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(43.dp)
+                                .background(colorPalette.background1, RoundedCornerShape(5.dp))
+                                .clickable {
+                                    UIStatePreferences.playlistsAsGrid = !UIStatePreferences.playlistsAsGrid
+                                }
+                        ) {
+                            Image(
+                                painter = painterResource(
+                                    if (UIStatePreferences.playlistsAsGrid) R.drawable.list else R.drawable.grid
+                                ),
+                                contentDescription = if (UIStatePreferences.playlistsAsGrid)
+                                    "Show playlists as a list" else "Show playlists as a grid",
+                                colorFilter = ColorFilter.tint(colorPalette.text),
+                                modifier = Modifier.size(21.dp)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                    ) {
+                        PlaylistSortChip("RECENT", playlistSortBy == PlaylistSortBy.DateAdded) {
+                            playlistSortBy = PlaylistSortBy.DateAdded
+                        }
+                        PlaylistSortChip("NAME", playlistSortBy == PlaylistSortBy.Name) {
+                            playlistSortBy = PlaylistSortBy.Name
+                        }
+                        PlaylistSortChip("SONGS", playlistSortBy == PlaylistSortBy.SongCount) {
+                            playlistSortBy = PlaylistSortBy.SongCount
+                        }
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(34.dp)
+                                .background(colorPalette.background1, RoundedCornerShape(5.dp))
+                                .clickable { playlistSortOrder = !playlistSortOrder }
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.arrow_up),
+                                contentDescription = "Reverse playlist sort order",
+                                colorFilter = ColorFilter.tint(colorPalette.text),
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .graphicsLayer { rotationZ = sortOrderIconRotation }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -289,6 +369,35 @@ fun HomePlaylists(
             lazyGridState = lazyGridState,
             icon = R.drawable.search,
             onClick = onSearchClick
+        )
+    }
+}
+
+@Composable
+private fun PlaylistSortChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val (colors) = LocalAppearance.current
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .background(
+                if (selected) Color(0xFF7256CB) else colors.background1,
+                RoundedCornerShape(5.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 9.dp)
+    ) {
+        BasicText(
+            text = label,
+            style = TextStyle(
+                color = if (selected) Color.White else colors.textSecondary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.5.sp
+            )
         )
     }
 }
