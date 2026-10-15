@@ -2,13 +2,13 @@ package app.vitune.android.ui.screens.player
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,7 +35,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.media3.common.C
 import androidx.media3.common.Player
 import app.vitune.android.R
 import app.vitune.android.models.ui.UiMedia
@@ -52,11 +52,8 @@ import app.vitune.android.ui.components.SeekBar
 import app.vitune.android.utils.forceSeekToNext
 import app.vitune.android.utils.forceSeekToPrevious
 
-/**
- * Ravyn's classic Material-inspired now-playing view.
- * Only the portrait presentation is replaced here. The existing player sheet,
- * queue, thumbnail gestures, lyrics, PiP and playback service remain in use.
- */
+/** New Now Playing layout based on the approved Ravyn reference. Playback and
+ * artwork/lyrics gesture logic come from the existing media engine, not ViTune UI. */
 @Composable
 fun RavynNowPlaying(
     media: UiMedia?,
@@ -76,198 +73,123 @@ fun RavynNowPlaying(
     thumbnailContent: @Composable (Modifier) -> Unit,
     modifier: Modifier = Modifier
 ) = BoxWithConstraints(modifier.fillMaxSize()) {
-    val compact = maxHeight < 590.dp
-    val narrow = maxWidth < 355.dp
-    val horizontalPadding = if (narrow) 20.dp else 28.dp
-    val animatedArtworkColor by animateColorAsState(
-        artworkAccent,
-        animationSpec = tween(380, easing = FastOutSlowInEasing),
-        label = "Artwork theme"
+    val compact = maxHeight < 615.dp
+    val horizontal = if (maxWidth < 350.dp) 20.dp else 26.dp
+    val animatedColor by animateColorAsState(
+        targetValue = artworkAccent,
+        animationSpec = tween(560, easing = FastOutSlowInEasing),
+        label = "Album artwork colour"
     )
-    val accent = lerp(animatedArtworkColor, Color.White, 0.12f)
-    val primaryText = Color.White
-    val secondaryText = Color(0xFFBFC4C8)
+    val accent = lerp(animatedColor, Color.White, 0.08f)
+    val main = Color(0xFFF8F8FA)
+    val sub = Color(0xFFC1C4C7)
 
-    // Reuse the loaded album cover's colour palette. No extra artwork image
-    // and no costly real-time blur; only a few smoothly animated colours.
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        lerp(Color(0xFF141719), animatedArtworkColor, 0.38f),
-                        lerp(Color(0xFF111315), animatedArtworkColor, 0.13f),
-                        Color(0xFF0D0F11)
-                    )
-                )
-            )
-    )
+    Box(Modifier.fillMaxSize().background(
+        Brush.verticalGradient(
+            0f to lerp(Color(0xFF191715), animatedColor, 0.36f),
+            0.40f to lerp(Color(0xFF151516), animatedColor, 0.18f),
+            0.82f to Color(0xFF101214),
+            1f to Color(0xFF0C0E10)
+        )
+    ))
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = topInset, start = horizontalPadding, end = horizontalPadding)
+        modifier = Modifier.fillMaxSize()
+            .padding(start = horizontal, end = horizontal, top = topInset)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(if (compact) 46.dp else 58.dp)
-        ) {
-            RavynIcon(
-                icon = R.drawable.chevron_down,
-                description = "Close player",
-                onClick = onCollapse,
-                color = primaryText,
-                modifier = Modifier.size(48.dp)
-            )
+        Row(verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().height(57.dp)) {
+            RavynPlayerIcon(R.drawable.chevron_down, "Close player", onCollapse)
             Spacer(Modifier.weight(1f))
             BasicText("NOW PLAYING", style = TextStyle(
-                color = primaryText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.0.sp
-            ))
+                color = main, fontSize = 12.sp,
+                letterSpacing = 1.sp, fontWeight = FontWeight.SemiBold))
             Spacer(Modifier.weight(1f))
-            RavynIcon(
-                icon = R.drawable.ellipsis_horizontal,
-                description = "More options",
-                onClick = onMore,
-                color = primaryText,
-                modifier = Modifier.size(48.dp)
-            )
+            RavynPlayerIcon(R.drawable.ellipsis_horizontal, "More options", onMore)
         }
 
-        Spacer(Modifier.height(if (compact) 2.dp else 8.dp))
-
-        // This is the original interactive thumbnail, including swipe/lyrics/PiP.
+        Spacer(Modifier.height(if (compact) 1.dp else 9.dp))
         BoxWithConstraints(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            contentAlignment = Alignment.Center
         ) {
-            val side = minOf(maxWidth, maxHeight - 8.dp, 440.dp)
+            val side = minOf(maxWidth, maxHeight, 450.dp)
             if (side > 0.dp) {
-                thumbnailContent(
-                    Modifier
-                        .size(side)
-                        .clip(RoundedCornerShape(10.dp))
-                )
+                thumbnailContent(Modifier.size(side)
+                    .clip(RoundedCornerShape(11.dp)))
             }
         }
 
-        Spacer(Modifier.height(if (compact) 8.dp else 14.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Spacer(Modifier.height(if (compact) 6.dp else 18.dp))
+        Row(verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                BasicText(
-                    text = title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                BasicText(title, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     style = TextStyle(
-                        color = primaryText,
-                        fontSize = if (narrow) 22.sp else 26.sp,
+                        color = main, fontSize = if (compact) 23.sp else 26.sp,
                         fontWeight = FontWeight.SemiBold,
-                        letterSpacing = (-0.45).sp
-                    )
-                )
-                Spacer(Modifier.height(4.dp))
-                BasicText(
-                    text = artist,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = TextStyle(
-                        color = secondaryText,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Normal
-                    )
-                )
+                        letterSpacing = (-0.6).sp
+                    ))
+                Spacer(Modifier.height(5.dp))
+                BasicText(artist, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    style = TextStyle(color = sub, fontSize = 15.sp))
             }
-            RavynIcon(
-                icon = if (likedAt == null) R.drawable.heart_outline else R.drawable.heart,
-                description = if (likedAt == null) "Like song" else "Unlike song",
-                onClick = { setLikedAt(if (likedAt == null) System.currentTimeMillis() else null) },
-                color = if (likedAt == null) Color.White else accent,
-                iconSize = 25.dp
+            RavynPlayerIcon(
+                if (likedAt == null) R.drawable.heart_outline else R.drawable.heart,
+                if (likedAt == null) "Like song" else "Unlike song",
+                { setLikedAt(if (likedAt == null) System.currentTimeMillis() else null) },
+                tint = if (likedAt == null) main else accent
             )
         }
 
-        Spacer(Modifier.height(if (compact) 12.dp else 22.dp))
-
-        // Never let the seekbar pop in and shift every control after buffering.
-        // The resting state has the same footprint as the interactive slider.
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxWidth().height(15.dp)
-        ) {
-            if (binder != null && media != null && media.duration > 0L &&
-                media.duration != androidx.media3.common.C.TIME_UNSET) {
+        Spacer(Modifier.height(if (compact) 10.dp else 22.dp))
+        Box(Modifier.fillMaxWidth().height(15.dp),
+            contentAlignment = Alignment.Center) {
+            if (binder != null && media != null && media.duration > 0L
+                && media.duration != C.TIME_UNSET) {
                 SeekBar(
-                    binder = binder,
-                    position = position,
-                    media = media,
-                    color = accent,
-                    backgroundColor = Color.White.copy(alpha = 0.36f),
+                    binder = binder, position = position, media = media,
+                    color = accent, backgroundColor = Color.White.copy(alpha = 0.27f),
                     style = PlayerPreferences.SeekBarStyle.Static,
-                    scrubberRadius = 6.dp
+                    scrubberRadius = 5.dp
                 )
             } else {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(Color.White.copy(alpha = 0.36f))
-                )
+                Box(Modifier.fillMaxWidth().height(3.dp)
+                    .background(Color.White.copy(alpha = 0.24f),
+                        RoundedCornerShape(3.dp)))
             }
         }
-        Spacer(Modifier.height(5.dp))
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            RavynTimeLabel(position)
-            if (media != null && media.duration > 0L &&
-                media.duration != androidx.media3.common.C.TIME_UNSET) {
-                RavynTimeLabel(media.duration)
-            } else {
-                BasicText("--:--", style = TextStyle(color = secondaryText, fontSize = 12.sp))
-            }
-        }
-
-        Spacer(Modifier.height(if (compact) 12.dp else 22.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            val player = binder?.player
-            RavynIcon(
-                icon = R.drawable.shuffle,
-                description = "Toggle shuffle",
-                color = if (player?.shuffleModeEnabled == true) accent else primaryText,
-                onClick = { if (player != null) player.shuffleModeEnabled = !player.shuffleModeEnabled },
-                modifier = Modifier.weight(1f),
-                iconSize = 22.dp
+        Row(horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()) {
+            RavynTimestamp(position, sub)
+            RavynTimestamp(
+                if (media != null && media.duration > 0L &&
+                    media.duration != C.TIME_UNSET) media.duration else 0L, sub
             )
-            RavynIcon(
-                icon = R.drawable.play_skip_back,
-                description = "Previous song",
-                color = primaryText,
-                onClick = { player?.forceSeekToPrevious() },
-                modifier = Modifier.weight(1f),
-                iconSize = 24.dp
+        }
+
+        Spacer(Modifier.height(if (compact) 10.dp else 25.dp))
+        val player = binder?.player
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().height(76.dp)
+        ) {
+            RavynPlayerIcon(
+                R.drawable.shuffle, "Shuffle",
+                {
+                    if (player != null) player.shuffleModeEnabled = !player.shuffleModeEnabled
+                },
+                tint = if (player?.shuffleModeEnabled == true) accent else main,
+                modifier = Modifier.weight(1f)
+            )
+            RavynPlayerIcon(
+                R.drawable.play_skip_back, "Previous",
+                { player?.forceSeekToPrevious() }, main, Modifier.weight(1f)
             )
             Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(if (compact) 64.dp else 72.dp)
-                    .clip(CircleShape)
+                Modifier.size(68.dp).clip(CircleShape)
                     .background(Color.White)
                     .clickable {
                         if (player != null) {
@@ -277,134 +199,97 @@ fun RavynNowPlaying(
                                 player.play()
                             }
                         }
-                    }
-            ) {
-                AnimatedContent(
-                    targetState = shouldBePlaying,
-                    transitionSpec = {
-                        (fadeIn(tween(170, easing = FastOutSlowInEasing)) +
-                            scaleIn(initialScale = 0.88f, animationSpec = tween(170)))
-                            .togetherWith(fadeOut(tween(100)))
                     },
-                    label = "Play/pause"
-                ) { playing ->
-                    Image(
-                        painter = painterResource(if (playing) R.drawable.pause else R.drawable.play),
+                contentAlignment = Alignment.Center
+            ) {
+                AnimatedContent(targetState = shouldBePlaying,
+                    transitionSpec = {
+                        ContentTransform(
+                            fadeIn(tween(170)) + scaleIn(
+                                initialScale = 0.82f, animationSpec = tween(170)),
+                            fadeOut(tween(110)), sizeTransform = null
+                        )
+                    }, label = "Animated playback controls") { playing ->
+                    Image(painterResource(if (playing) R.drawable.pause else R.drawable.play),
                         contentDescription = if (playing) "Pause" else "Play",
                         colorFilter = ColorFilter.tint(Color(0xFF111315)),
-                        modifier = Modifier.size(30.dp)
-                    )
+                        modifier = Modifier.size(31.dp))
                 }
             }
-            RavynIcon(
-                icon = R.drawable.play_skip_forward,
-                description = "Next song",
-                color = primaryText,
-                onClick = { player?.forceSeekToNext() },
-                modifier = Modifier.weight(1f),
-                iconSize = 24.dp
+            RavynPlayerIcon(
+                R.drawable.play_skip_forward, "Next", { player?.forceSeekToNext() },
+                main, Modifier.weight(1f)
             )
-            RavynIcon(
-                icon = if (PlayerPreferences.trackLoopEnabled) R.drawable.repeat_on else R.drawable.repeat,
-                description = "Toggle repeat track",
-                color = if (PlayerPreferences.trackLoopEnabled) accent else primaryText,
-                onClick = { PlayerPreferences.trackLoopEnabled = !PlayerPreferences.trackLoopEnabled },
-                modifier = Modifier.weight(1f),
-                iconSize = 23.dp
+            RavynPlayerIcon(
+                if (PlayerPreferences.trackLoopEnabled) R.drawable.repeat_on
+                    else R.drawable.repeat,
+                "Repeat track",
+                { PlayerPreferences.trackLoopEnabled = !PlayerPreferences.trackLoopEnabled },
+                if (PlayerPreferences.trackLoopEnabled) accent else main,
+                Modifier.weight(1f)
             )
         }
+        Spacer(Modifier.height(if (compact) 7.dp else 17.dp))
 
-        Spacer(Modifier.height(if (compact) 10.dp else 19.dp))
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 10.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            RavynTextAction("LYRICS", R.drawable.musical_notes, accent, true, onShowLyrics)
-            RavynTextAction("UP NEXT", R.drawable.enqueue, accent, false, onShowQueue)
-        }
-
-        Spacer(Modifier.height(if (compact) 6.dp else 12.dp))
+        RavynPlayerCard("LYRICS", R.drawable.musical_notes,
+            accent, highlighted = true, onShowLyrics)
+        Spacer(Modifier.height(if (compact) 7.dp else 13.dp))
+        RavynPlayerCard("UP NEXT", R.drawable.enqueue,
+            accent, highlighted = false, onShowQueue)
+        Spacer(Modifier.height(if (compact) 5.dp else 15.dp))
     }
 }
 
 @Composable
-private fun RavynIcon(
+private fun RavynPlayerIcon(
     @DrawableRes icon: Int,
     description: String,
     onClick: () -> Unit,
-    color: Color,
-    modifier: Modifier = Modifier,
-    iconSize: Dp = 24.dp,
-    alignEnd: Boolean = false
+    tint: Color = Color.White,
+    modifier: Modifier = Modifier
 ) {
-    Box(
-        contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.Center,
-        modifier = modifier
-            .height(48.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .clickable(onClick = onClick)
-    ) {
-        Image(
-            painter = painterResource(icon),
-            contentDescription = description,
-            colorFilter = ColorFilter.tint(color),
-            modifier = Modifier.size(iconSize)
-        )
+    Box(modifier.height(48.dp).clip(CircleShape).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center) {
+        Image(painterResource(icon), contentDescription = description,
+            colorFilter = ColorFilter.tint(tint),
+            modifier = Modifier.size(23.dp))
     }
 }
 
 @Composable
-private fun RavynTextAction(
-    text: String,
-    @DrawableRes icon: Int,
-    accent: Color,
-    highlighted: Boolean,
-    onClick: () -> Unit
+private fun RavynPlayerCard(
+    label: String, @DrawableRes icon: Int, accent: Color,
+    highlighted: Boolean, onClick: () -> Unit
 ) {
-    val fill by animateColorAsState(
-        if (highlighted) accent.copy(alpha = 0.16f) else Color(0xFF1B1F22),
-        animationSpec = tween(320), label = "Action card"
+    val color by animateColorAsState(
+        if (highlighted) accent.copy(alpha = 0.17f) else Color(0xFF1D2225),
+        animationSpec = tween(420), label = "Action surface"
     )
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(fill)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier.fillMaxWidth().height(55.dp)
+            .clip(RoundedCornerShape(12.dp)).background(color)
+            .clickable(onClick = onClick).padding(horizontal = 18.dp)
     ) {
-        Image(
-            painterResource(icon), contentDescription = null,
+        Image(painterResource(icon), null,
             colorFilter = ColorFilter.tint(if (highlighted) accent else Color.White),
-            modifier = Modifier.size(21.dp)
-        )
-        androidx.compose.foundation.layout.Spacer(Modifier.size(15.dp))
-        BasicText(
-            text, style = TextStyle(
-                color = Color.White, fontSize = 12.sp,
-                fontWeight = FontWeight.Medium, letterSpacing = 0.5.sp
-            ),
-            modifier = Modifier.weight(1f)
-        )
-        Image(painterResource(R.drawable.chevron_forward), contentDescription = null,
-            colorFilter = ColorFilter.tint(if (highlighted) accent else Color(0xFFABB0B4)),
+            modifier = Modifier.size(20.dp))
+        BasicText(label, modifier = Modifier.weight(1f),
+            style = TextStyle(color = Color.White, fontSize = 12.sp,
+                fontWeight = FontWeight.Medium, letterSpacing = 0.5.sp))
+        Image(painterResource(R.drawable.chevron_forward), null,
+            colorFilter = ColorFilter.tint(if (highlighted) accent else Color.LightGray),
             modifier = Modifier.size(18.dp))
     }
 }
 
 @Composable
-private fun RavynTimeLabel(timeMs: Long, remaining: Boolean = false) {
-    val seconds = timeMs.coerceAtLeast(0L) / 1000
-    val time = if (seconds >= 3600) {
-        "%d:%02d:%02d".format(seconds / 3600, (seconds / 60) % 60, seconds % 60)
-    } else {
-        "%d:%02d".format(seconds / 60, seconds % 60)
-    }
-    BasicText(
-        text = if (remaining) "-$time" else time,
-        style = TextStyle(color = Color(0xFFD4D4E9), fontSize = 12.sp)
-    )
+private fun RavynTimestamp(value: Long, color: Color) {
+    val seconds = value.coerceAtLeast(0L) / 1000L
+    val formatted = if (seconds >= 3600L) {
+        "%d:%02d:%02d".format(seconds / 3600L, (seconds / 60L) % 60L, seconds % 60L)
+    } else "%d:%02d".format(seconds / 60L, seconds % 60L)
+    BasicText(formatted,
+        style = TextStyle(color = color, fontSize = 12.sp))
 }
