@@ -61,13 +61,6 @@ fun PlayerSettings() = with(PlayerPreferences) {
             )
 
             SwitchSettingsEntry(
-                title = stringResource(R.string.pause_minimum_volume),
-                text = stringResource(R.string.pause_minimum_volume_description),
-                isChecked = stopOnMinimumVolume,
-                onCheckedChange = { stopOnMinimumVolume = it }
-            )
-
-            SwitchSettingsEntry(
                 title = stringResource(R.string.skip_on_error),
                 text = stringResource(R.string.skip_on_error_description),
                 isChecked = skipOnError,
@@ -90,50 +83,12 @@ fun PlayerSettings() = with(PlayerPreferences) {
                 }
             )
 
-            AnimatedVisibility(visible = skipSilence) {
-                val initialValue by remember { derivedStateOf { minimumSilence.toFloat() / 1000L } }
-                var newValue by remember(initialValue) { mutableFloatStateOf(initialValue) }
-
-                Column {
-                    SliderSettingsEntry(
-                        title = stringResource(R.string.minimum_silence_length),
-                        text = stringResource(R.string.minimum_silence_length_description),
-                        state = newValue,
-                        onSlide = { newValue = it },
-                        onSlideComplete = {
-                            minimumSilence = newValue.toLong() * 1000L
-                            changed = true
-                        },
-                        toDisplay = { stringResource(R.string.format_ms, it.toLong()) },
-                        range = 1f..2000f
-                    )
-                }
-            }
-
             SwitchSettingsEntry(
                 title = stringResource(R.string.loudness_normalization),
                 text = stringResource(R.string.loudness_normalization_description),
                 isChecked = volumeNormalization,
                 onCheckedChange = { volumeNormalization = it }
             )
-
-            AnimatedVisibility(visible = volumeNormalization) {
-                var newValue by remember(volumeNormalizationBaseGain) {
-                    mutableFloatStateOf(volumeNormalizationBaseGain)
-                }
-
-                SliderSettingsEntry(
-                    title = stringResource(R.string.loudness_base_gain),
-                    text = stringResource(R.string.loudness_base_gain_description),
-                    state = newValue,
-                    onSlide = { newValue = it },
-                    onSlideComplete = { volumeNormalizationBaseGain = newValue },
-                    toDisplay = { stringResource(R.string.format_db, "%.1f".format(it)) },
-                    range = -20f..20f,
-                    steps = 79,
-                    showTicks = false
-                )
-            }
 
             SwitchSettingsEntry(
                 title = stringResource(R.string.bass_boost),
@@ -163,13 +118,6 @@ fun PlayerSettings() = with(PlayerPreferences) {
                 onCheckedChange = {
                     sponsorBlockEnabled = it
                 }
-            )
-
-            EnumValueSelectorSettingsEntry(
-                title = stringResource(R.string.reverb),
-                selectedValue = reverb,
-                onValueSelect = { reverb = it },
-                valueText = { it.displayName() }
             )
 
             SwitchSettingsEntry(
