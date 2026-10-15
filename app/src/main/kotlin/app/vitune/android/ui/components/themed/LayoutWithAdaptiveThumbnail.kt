@@ -3,6 +3,7 @@ package app.vitune.android.ui.components.themed
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
@@ -61,10 +62,16 @@ fun adaptiveThumbnailContent(
             .clip(shape ?: thumbnailShape)
             .size(thumbnailSize)
 
-        if (isLoading) Spacer(
-            modifier = innerModifier
-                .background(colorPalette.background2)
-        ) else AsyncImage(
+        if (isLoading) Box(
+            contentAlignment = Alignment.Center,
+            modifier = innerModifier.background(colorPalette.background2)
+        ) {
+            CircularProgressIndicator(
+                color = colorPalette.accent,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(24.dp)
+            )
+        } else AsyncImage(
             model = url?.thumbnail(thumbnailSize.px),
             contentDescription = null,
             modifier = innerModifier.background(colorPalette.background2)

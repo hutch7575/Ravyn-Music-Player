@@ -211,14 +211,17 @@ fun Player(
                     .clip(shape)
                     .background(colorPalette.background1)
                     .drawBehind {
+                        // Classic two-pixel progress line. The previous design
+                        // repainted the entire mini-player background as time
+                        // advanced, making the layout visually noisy.
                         drawRect(
-                            color = colorPalette.collapsedPlayerProgressBar,
-                            topLeft = Offset.Zero,
+                            color = colorPalette.accent,
+                            topLeft = Offset(0f, size.height - 2.dp.toPx()),
                             size = Size(
-                                width = runCatching {
-                                    size.width * (position.toFloat() / duration.absoluteValue)
-                                }.getOrElse { 0f },
-                                height = size.height
+                                width = if (duration > 0L)
+                                    (size.width * (position.toFloat() / duration)).coerceIn(0f, size.width)
+                                else 0f,
+                                height = 2.dp.toPx()
                             )
                         )
                     }
