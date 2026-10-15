@@ -68,6 +68,7 @@ import app.vitune.android.preferences.PlayerPreferences
 import app.vitune.android.query
 import app.vitune.android.service.PlayerService
 import app.vitune.android.transaction
+import app.vitune.android.ui.ravyn.RavynBottomNavigation
 import app.vitune.android.ui.components.BottomSheet
 import app.vitune.android.ui.components.BottomSheetState
 import app.vitune.android.ui.components.LocalMenuState
@@ -178,9 +179,10 @@ fun Player(
     val metadata = remember(mediaItem) { mediaItem?.mediaMetadata }
     val extras = remember(metadata) { metadata?.extras?.songBundle }
 
-    val horizontalBottomPaddingValues = windowInsets
-        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+    val bottomSystemBarPadding = windowInsets
+        .only(WindowInsetsSides.Bottom)
         .asPaddingValues()
+        .calculateBottomPadding()
 
     OnGlobalRoute { if (layoutState.expanded) layoutState.collapseSoft() }
 
@@ -193,9 +195,10 @@ fun Player(
         },
         backHandlerEnabled = !menuState.isDisplayed,
         collapsedContent = { innerModifier ->
+            Column(modifier = Modifier.fillMaxWidth()) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .let { modifier ->
                         if (horizontalSwipeToClose) modifier.onSwipe(
@@ -207,7 +210,8 @@ fun Player(
                             }
                         ) else modifier
                     }
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .height(Dimensions.items.collapsedPlayerHeight)
                     .clip(shape)
                     .background(colorPalette.background1)
                     .drawBehind {
@@ -226,7 +230,7 @@ fun Player(
                         )
                     }
                     .then(innerModifier)
-                    .padding(horizontalBottomPaddingValues)
+                    .padding(horizontal = 10.dp)
             ) {
                 Spacer(modifier = Modifier.width(2.dp))
 
@@ -346,6 +350,10 @@ fun Player(
                 }
 
                 Spacer(modifier = Modifier.width(2.dp))
+            }
+            // Mini-player first, with permanent bottom navigation directly beneath it.
+            RavynBottomNavigation()
+            Spacer(Modifier.height(bottomSystemBarPadding))
             }
         }
     ) {
