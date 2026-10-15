@@ -489,6 +489,7 @@ private fun RavynLibrary(
 ) {
     val categories = listOf("Liked", "Playlists", "Artists", "Albums", "Songs", "Local")
     var reverse by rememberSaveable { mutableStateOf(false) }
+    val collectionStates = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.horizontalScroll(rememberScrollState())
             .padding(start = 18.dp, end = 18.dp, top = 4.dp, bottom = 14.dp),
@@ -497,10 +498,27 @@ private fun RavynLibrary(
                 RavynPill(name, category == i) { setCategory(i) }
             }
         }
-        AnimatedContent(targetState = category,
-            transitionSpec = { ContentTransform(fadeIn(tween(220)), fadeOut(tween(110)),
-                sizeTransform = null) },
-            label = "Library category") { current ->
+        AnimatedContent(
+            targetState = category,
+            transitionSpec = {
+                val forward = targetState > initialState
+                ContentTransform(
+                    fadeIn(tween(250, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(
+                            animationSpec = tween(270, easing = FastOutSlowInEasing),
+                            initialOffsetX = { if (forward) it / 10 else -it / 10 }
+                        ),
+                    fadeOut(tween(130)) +
+                        slideOutHorizontally(
+                            animationSpec = tween(220),
+                            targetOffsetX = { if (forward) -it / 12 else it / 12 }
+                        ),
+                    sizeTransform = null
+                )
+            },
+            label = "Library category"
+        ) { current ->
+            collectionStates.SaveableStateProvider(current) {
             when (current) {
                 0, 4, 5 -> {
                     val data = when (current) { 0 -> liked; 5 -> local; else -> songs }
