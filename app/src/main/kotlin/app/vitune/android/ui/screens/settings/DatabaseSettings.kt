@@ -2,6 +2,8 @@ package app.vitune.android.ui.screens.settings
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.database.sqlite.SQLiteDatabase
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -20,9 +22,9 @@ import app.vitune.android.query
 import app.vitune.android.service.PlayerService
 import app.vitune.android.transaction
 import app.vitune.android.ui.screens.Route
-import app.vitune.android.utils.intent
 import app.vitune.android.utils.toast
 import kotlinx.coroutines.flow.distinctUntilChanged
+import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -62,21 +64,61 @@ fun DatabaseSettings() = with(DataPreferences) {
         if (uri == null) return@rememberLauncherForActivityResult
 
         query {
-            Database.checkpoint()
-            Database.internal.close()
+            val target = File(Database.internal.path)
+            val pending = File.createTempFile("vitune-restore-", ".db", target.parentFile)
+            try {
+                // Never overwrite the live database before checking the supplied file.
+                val resolver = context.applicationContext.contentResolver
+                val source = resolver.openInputStream(uri)
+                    ?: error("Unable to open the selected backup")
+                source.use { input ->
+                    FileOutputStream(pending).use { output -> input.copyTo(output) }
+                }
 
-            with(context) {
-                applicationContext.contentResolver.openInputStream(uri)
-                    ?.use { inputStream ->
-                        FileOutputStream(Database.internal.path).use { outputStream ->
-                            inputStream.copyTo(outputStream)
-                        }
+                val supportedVersion = Database.internal.openHelper.readableDatabase.version
+                SQLiteDatabase.openDatabase(
+                    pending.absolutePath,
+                    null,
+                    SQLiteDatabase.OPEN_READONLY
+                ).use { candidate ->
+                    require(candidate.version in 1..supportedVersion) {
+                        "This backup uses an unsupported database version"
                     }
+                    require(
+                        candidate.rawQuery("PRAGMA integrity_check", null).use {
+                            it.moveToFirst() && it.getString(0) == "ok"
+                        }
+                    ) { "The selected backup is damaged" }
 
-                stopService(intent<PlayerService>())
+                    // Favourites live in Song.likedAt; reject an incompatible file
+                    // instead of silently importing a library without its favourites.
+                    val columns = mutableSetOf<String>()
+                    candidate.rawQuery("PRAGMA table_info(Song)", null).use {
+                        while (it.moveToNext()) columns += it.getString(1)
+                    }
+                    require("id" in columns && "likedAt" in columns) {
+                        "The selected file is not a compatible ViTune library"
+                    }
+                }
+
+                Database.checkpoint()
+                Database.internal.close()
+
+                // Keep a recovery copy in app-private storage until the user has
+                // confirmed that the imported library opens correctly.
+                target.copyTo(File(target.parentFile, "data.db.pre-restore"), overwrite = true)
+                check(pending.renameTo(target)) { "Could not install the validated backup" }
+                File(target.path + "-wal").delete()
+                File(target.path + "-shm").delete()
+
+                context.stopService(Intent(context, PlayerService::class.java))
+                exitProcess(0)
+            } catch (exception: Exception) {
+                exception.printStackTrace()
+                context.toast("Import failed. Your existing library was not intentionally changed.")
+            } finally {
+                pending.delete()
             }
-
-            exitProcess(0)
         }
     }
 

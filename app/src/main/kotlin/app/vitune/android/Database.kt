@@ -695,6 +695,31 @@ interface DatabaseAccessor {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(format: Format)
 
+    // Refresh stream details without losing previously obtained loudness metadata.
+    // Preserve known metadata when the extractor does not supply a replacement.
+    @Query(
+        """
+        INSERT OR REPLACE INTO Format
+        (songId, itag, mimeType, bitrate, contentLength, lastModified, loudnessDb)
+        VALUES (
+            :songId,
+            COALESCE(:itag, (SELECT itag FROM Format WHERE songId = :songId)),
+            COALESCE(:mimeType, (SELECT mimeType FROM Format WHERE songId = :songId)),
+            COALESCE(:bitrate, (SELECT bitrate FROM Format WHERE songId = :songId)),
+            COALESCE(:contentLength, (SELECT contentLength FROM Format WHERE songId = :songId)),
+            (SELECT lastModified FROM Format WHERE songId = :songId),
+            (SELECT loudnessDb FROM Format WHERE songId = :songId)
+        )
+        """
+    )
+    fun upsertStreamFormat(
+        songId: String,
+        itag: Int?,
+        mimeType: String?,
+        bitrate: Long?,
+        contentLength: Long?
+    )
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(searchQuery: SearchQuery)
 

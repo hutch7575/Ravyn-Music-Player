@@ -38,7 +38,7 @@ private suspend fun Innertube.tryContexts(
                 parameter("t", generateNonceSuspend(12))
                 header("X-Goog-Api-Format-Version", "2")
                 parameter("id", body.videoId)
-            }.body<PlayerResponse>().also { logger.info("Got $it") }
+            }.body<PlayerResponse>().also { logger.info("Got player response for ${body.videoId}") }
         }
             ?.getOrNull()
             ?.takeIf { checkIsValid && it.isValid }

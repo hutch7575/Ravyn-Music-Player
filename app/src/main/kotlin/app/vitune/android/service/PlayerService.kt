@@ -46,6 +46,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.ContentMetadata
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
@@ -67,7 +68,6 @@ import app.vitune.android.Dependencies
 import app.vitune.android.MainActivity
 import app.vitune.android.R
 import app.vitune.android.models.Event
-import app.vitune.android.models.Format
 import app.vitune.android.models.QueuedMediaItem
 import app.vitune.android.models.Song
 import app.vitune.android.models.SongWithContentLength
@@ -117,9 +117,7 @@ import app.vitune.core.ui.utils.songBundle
 import app.vitune.core.ui.utils.streamVolumeFlow
 import app.vitune.providers.innertube.Innertube
 import app.vitune.providers.innertube.models.NavigationEndpoint
-import app.vitune.providers.innertube.models.bodies.PlayerBody
 import app.vitune.providers.innertube.models.bodies.SearchBody
-import app.vitune.providers.innertube.requests.player
 import app.vitune.providers.innertube.requests.searchPage
 import app.vitune.providers.innertube.utils.from
 import app.vitune.providers.sponsorblock.SponsorBlock
@@ -181,6 +179,8 @@ private const val LOOP_ACTION = "app.vitune.android.LOOP"
 class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListener.Callback {
     private lateinit var mediaSession: MediaSession
     private lateinit var cache: Cache
+    private val streamUriCache = UriCache<String, Long?>()
+    private var playbackRecoveryAttempts = 0
     private lateinit var player: ExoPlayer
 
     private val defaultActions =
@@ -491,6 +491,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        playbackRecoveryAttempts = 0
         if (
             AppearancePreferences.hideExplicit &&
             mediaItem?.mediaMetadata?.extras?.songBundle?.explicit == true
@@ -526,10 +527,11 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     override fun onPlayerError(error: PlaybackException) {
         super.onPlayerError(error)
 
-        if (
-            error.findCause<InvalidResponseCodeException>()?.responseCode == 416
-        ) {
-            player.pause()
+        val httpCode = error.findCause<InvalidResponseCodeException>()?.responseCode
+        // Refresh stale URLs and retry a limited number of times.
+        if (httpCode in listOf(403, 410, 416) && playbackRecoveryAttempts < 2) {
+            playbackRecoveryAttempts++
+            streamUriCache.clear()
             player.prepare()
             player.play()
             return
@@ -1068,7 +1070,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                 }
             },
             context = applicationContext,
-            cache = cache
+            cache = cache,
+            uriCache = streamUriCache
         ),
         /* extractorsFactory = */
         DefaultExtractorsFactory()
@@ -1333,7 +1336,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
     companion object {
         private const val DEFAULT_CACHE_DIRECTORY = "exoplayer"
-        private const val DEFAULT_CHUNK_LENGTH = 512 * 1024L
+        private const val DEFAULT_CHUNK_LENGTH = 1024 * 1024L
 
         fun createDatabaseProvider(context: Context) = StandaloneDatabaseProvider(context)
         fun createCache(
@@ -1370,97 +1373,91 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
             val mediaId = dataSpec.key?.removePrefix("https://youtube.com/watch?v=")
                 ?: error("A key must be set")
 
-            fun DataSpec.ranged(contentLength: Long?) = contentLength?.let {
-                if (chunkLength == null) return@let null
+            fun DataSpec.ranged(contentLength: Long?): DataSpec {
+                if (chunkLength == null || contentLength == null) return this
+                // Media3 generates HTTP Range headers from DataSpec.position and length.
+                val remaining = contentLength - position
+                if (remaining <= 0L) return this
+                val requested = length.takeIf { it > 0L } ?: chunkLength
+                return buildUpon().setLength(minOf(remaining, requested, chunkLength)).build()
+            }
 
-                val start = dataSpec.uriPositionOffset
-                val length = (contentLength - start).coerceAtMost(chunkLength)
-                val rangeText = "$start-${start + length}"
+            val cachedContentLength = ContentMetadata
+                .getContentLength(cache.getContentMetadata(mediaId))
+                .takeIf { it != C.LENGTH_UNSET.toLong() }
+                ?: uriCache[mediaId]?.meta
+            val remaining = cachedContentLength?.minus(dataSpec.position)
+            val requestedLength = dataSpec.length.takeIf { it > 0L } ?: chunkLength
+            val cachedLength = requestedLength?.let { size ->
+                remaining?.let { minOf(size, it) } ?: size
+            }
+            val isAlreadyCached = cachedLength != null && cachedLength > 0L &&
+                cache.isCached(mediaId, dataSpec.position, cachedLength)
 
-                this.subrange(start, length)
-                    .withAdditionalHeaders(mapOf("Range" to "bytes=$rangeText"))
-            } ?: this
-
-            if (
-                dataSpec.isLocal || (
-                    chunkLength != null && cache.isCached(
-                        /* key = */
-                        mediaId,
-                        /* position = */
-                        dataSpec.position,
-                        /* length = */
-                        chunkLength
-                    )
-                    )
-            ) {
+            if (dataSpec.isLocal || isAlreadyCached) {
                 dataSpec
             } else {
-                uriCache[mediaId]?.let { cachedUri ->
+                uriCache[mediaId]
+                    ?.takeIf { System.currentTimeMillis() - it.createdAtMillis < 15 * 60_000L }
+                    ?.let { cachedUri ->
                     dataSpec
                         .withUri(cachedUri.uri)
                         .ranged(cachedUri.meta)
                 } ?: run {
-                    val body = runBlocking(Dispatchers.IO) {
-                        Innertube.player(PlayerBody(videoId = mediaId))
-                    }?.getOrNull()
-                    val youtubeFormat = body?.streamingData?.highestQualityFormat
-
+                    // Only extraction is required to start the audio stream. The
+                    // old implementation made up to four Innertube requests first,
+                    // blocking playback even when yt-dlp could resolve the URL.
                     val info = runCatching {
                         Dependencies.runDownload(mediaId)
                     }.mapCatching {
                         YouTubeDLResponse.fromString(it)
-                    }.also { it.exceptionOrNull()?.printStackTrace() }.getOrNull()
-                    if (info?.id != mediaId) throw VideoIdMismatchException()
-                    val format = info.formats?.firstOrNull { it.formatId == info.formatId }
+                    }.getOrElse { throw UnplayableException(it) }
+                    if (info.id != mediaId) throw VideoIdMismatchException()
 
-                    val uri =
-                        runCatching { info.url?.toUri() }.getOrNull() ?: throw UnplayableException()
+                    // Approximate byte counts are unsafe for limiting the final HTTP
+                    // range; if the size is unknown, let Media3 stream until EOF.
+                    val streamSize = info.fileSize
+                    val uri = info.url?.toUri() ?: throw UnplayableException()
 
                     val mediaItem = runCatching {
                         runBlocking(Dispatchers.IO) { findMediaItem(mediaId) }
                     }.getOrNull()
 
                     val extras = mediaItem?.mediaMetadata?.extras?.songBundle
-                    if (extras?.durationText == null) {
-                        body
-                            ?.streamingData
-                            ?.highestQualityFormat
-                            ?.approxDurationMs
-                            ?.div(1000)
-                            ?.let(DateUtils::formatElapsedTime)
-                            ?.removePrefix("0")
-                            ?.let { durationText ->
-                                extras?.durationText = durationText
-                                Database.updateDurationText(mediaId, durationText)
-                            }
-                    }
+                    val durationText = info.duration
+                        ?.toLong()
+                        ?.takeIf { it > 0L && extras?.durationText == null }
+                        ?.let(DateUtils::formatElapsedTime)
+                        ?.removePrefix("0")
+                    durationText?.let { extras?.durationText = it }
 
+                    // Database writes are queued, never performed on the Media3
+                    // loader thread that is waiting to receive the audio URL.
                     transaction {
                         runCatching {
                             mediaItem?.let(Database::insert)
-                            Database.insert(
-                                Format(
-                                    songId = mediaId,
-                                    itag = info.formatId?.toIntOrNull(),
-                                    mimeType = youtubeFormat?.mimeType,
-                                    bitrate = format?.abr?.let { it * 1000 }?.toLong(),
-                                    loudnessDb = body?.playerConfig?.audioConfig?.normalizedLoudnessDb,
-                                    contentLength = info.fileSize,
-                                    lastModified = youtubeFormat?.lastModified
-                                )
+                            durationText?.let { Database.updateDurationText(mediaId, it) }
+                            Database.upsertStreamFormat(
+                                songId = mediaId,
+                                itag = info.formatId?.toIntOrNull(),
+                                mimeType = info.mimeType,
+                                bitrate = info.formats
+                                    ?.firstOrNull { it.formatId == info.formatId }
+                                    ?.abr?.let { (it * 1000).toLong() },
+                                contentLength = streamSize
                             )
-                        }
+                        }.onFailure { it.printStackTrace() }
                     }
 
                     uriCache.push(
                         key = mediaId,
-                        meta = info.fileSize,
+                        meta = streamSize,
                         uri = uri
                     )
 
                     dataSpec
                         .withUri(uri)
-                        .ranged(info.fileSize)
+                        .ranged(streamSize)
                 }
             }
         }.handleUnknownErrors {

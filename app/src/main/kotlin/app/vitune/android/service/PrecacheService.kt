@@ -41,15 +41,16 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.util.NavigableSet
 import java.util.concurrent.Executors
-import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
 private val executor = Executors.newCachedThreadPool()
@@ -86,22 +87,18 @@ class PrecacheService : DownloadService(
 
     private val notificationActionReceiver = NotificationActionReceiver()
 
-    private val waiters = mutableListOf<() -> Unit>()
+    private val binderState = MutableStateFlow<PlayerService.Binder?>(null)
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             if (service !is PlayerService.Binder) return
             bound = true
-            binder = service
-            waiters.forEach { it() }
-            waiters.clear()
+            binderState.value = service
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
             bound = false
-            binder = null
-            waiters.forEach { it() }
-            waiters.clear()
+            binderState.value = null
         }
     }
 
@@ -126,7 +123,6 @@ class PrecacheService : DownloadService(
     @get:Synchronized
     @set:Synchronized
     private var bound = false
-    private var binder: PlayerService.Binder? = null
 
     private var progressUpdaterJob: Job? = null
 
@@ -148,12 +144,10 @@ class PrecacheService : DownloadService(
         }
 
         val cache = BlockingDeferredCache {
-            suspendCancellableCoroutine {
-                waiters += { it.resume(Unit) }
-            }
-            binder?.cache ?: run {
-                toast(getString(R.string.error_pre_cache))
-                error("PlayerService failed to start, crashing...")
+            // StateFlow replays an already-connected binder: no lost wake-ups.
+            // Time out instead of blocking a download forever if binding fails.
+            withTimeout(20_000L) {
+                binderState.filterNotNull().first().cache
             }
         }
 
