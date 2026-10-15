@@ -29,9 +29,9 @@ Merge the tested changes to `master`. In **GitHub → Releases → Draft a new r
 1. Select **Choose a tag → v1.0.0 → Create new tag on publish**, targeting `master`.
 2. Enter title **Ravyn v1.0.0** and describe the release.
 3. Click **Publish release**. Publishing starts the [release workflow](../.github/workflows/android-release.yml), which builds a signed **universal** APK and attaches it to that release as `Ravyn-v1.0.0.apk` after it succeeds.
-4. Wait for the workflow to complete successfully before distributing the APK. If signing secrets are missing, the workflow fails and no APK will be attached; configure the secrets and rerun the failed job from GitHub Actions.
+4. Wait for the workflow to complete successfully before distributing the APK. If the build fails, fix the workflow on `master`, open **Actions → Signed Ravyn release → Run workflow**, select the default `master` branch, and enter the existing release tag (such as `v1.0.0`). This rebuilds the same tagged source and uploads/replaces the release APK without moving the tag.
 
-The in-app updater only selects production APK assets, not debug/nightly artifacts.
+The in-app updater only selects production APK assets, not debug/nightly artifacts. The upload step checks that the selected APK contains native libraries for both supported ABIs.
 
 Use a new semantic version for every subsequent release. The workflow derives `versionCode` from `MAJOR.MINOR.PATCH`; never reuse a tag.
 
