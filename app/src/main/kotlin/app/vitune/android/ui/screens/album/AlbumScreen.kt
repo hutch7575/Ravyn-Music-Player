@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.vitune.android.Database
+import app.vitune.android.utils.forcePlayAtIndex
+import app.vitune.android.utils.forcePlayFromBeginning
 import app.vitune.android.R
 import app.vitune.android.models.Album
 import app.vitune.android.models.Song
@@ -126,121 +128,45 @@ fun AlbumScreen(browseId: String) {
 
     RouteHandler {
         GlobalRoutes()
-
         Content {
-            val headerContent: @Composable (
-                beforeContent: (@Composable () -> Unit)?,
-                afterContent: (@Composable () -> Unit)?
-            ) -> Unit = { beforeContent, afterContent ->
-                if (album?.timestamp == null) HeaderPlaceholder(modifier = Modifier.shimmer())
-                else {
-                    val (colorPalette) = LocalAppearance.current
-                    val context = LocalContext.current
-
-                    Header(title = album?.title ?: stringResource(R.string.unknown)) {
-                        beforeContent?.invoke()
-
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        afterContent?.invoke()
-
-                        HeaderIconButton(
-                            icon = if (album?.bookmarkedAt == null) R.drawable.bookmark_outline
-                            else R.drawable.bookmark,
-                            color = colorPalette.accent,
-                            onClick = {
-                                val bookmarkedAt =
-                                    if (album?.bookmarkedAt == null) System.currentTimeMillis() else null
-
-                                query {
-                                    album
-                                        ?.copy(bookmarkedAt = bookmarkedAt)
-                                        ?.let(Database::update)
-                                }
-                            }
-                        )
-
-                        HeaderIconButton(
-                            icon = R.drawable.share_social,
-                            color = colorPalette.text,
-                            onClick = {
-                                album?.shareUrl?.let { url ->
-                                    val sendIntent = Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, url)
-                                    }
-
-                                    context.startActivity(
-                                        Intent.createChooser(sendIntent, null)
-                                    )
-                                }
-                            }
-                        )
+            val binder = app.vitune.android.LocalPlayerServiceBinder.current
+            app.vitune.android.ui.ravyn.RavynCollectionDetail(
+                title = album?.title ?: albumPage?.title ?: "Album",
+                artist = album?.authorsText ?: albumPage?.authors
+                    ?.joinToString { it.name.orEmpty() },
+                artwork = album?.thumbnailUrl ?: albumPage?.thumbnail?.url,
+                tracks = songs,
+                onBack = pop,
+                onPlay = { index ->
+                    binder?.stopRadio()
+                    binder?.player?.forcePlayAtIndex(
+                        songs.map(app.vitune.android.models.Song::asMediaItem), index
+                    )
+                },
+                onShuffle = {
+                    binder?.stopRadio()
+                    binder?.player?.forcePlayFromBeginning(
+                        songs.shuffled().map(app.vitune.android.models.Song::asMediaItem)
+                    )
+                },
+                onLike = { song ->
+                    query {
+                        Database.like(song.id,
+                            if (song.likedAt == null) System.currentTimeMillis() else null)
                     }
-                }
-            }
-
-            val thumbnailContent = adaptiveThumbnailContent(
-                isLoading = album?.timestamp == null,
-                url = album?.thumbnailUrl
-            )
-
-            Scaffold(
-                key = "album",
-                topIconButtonId = R.drawable.chevron_back,
-                onTopIconButtonClick = pop,
-                tabIndex = tabIndex,
-                onTabChange = { newTab -> tabIndexState.update { newTab } },
-                tabColumnContent = {
-                    tab(0, R.string.songs, R.drawable.musical_notes, canHide = false)
-                    tab(1, R.string.other_versions, R.drawable.disc)
-                }
-            ) { currentTabIndex ->
-                saveableStateHolder.SaveableStateProvider(key = currentTabIndex) {
-                    when (currentTabIndex) {
-                        0 -> AlbumSongs(
-                            songs = songs,
-                            headerContent = headerContent,
-                            thumbnailContent = thumbnailContent,
-                            afterHeaderContent = {
-                                if (album == null) PlaylistInfo(playlist = albumPage)
-                                else PlaylistInfo(playlist = album)
-                            }
-                        )
-
-                        1 -> {
-                            ItemsPage(
-                                tag = "album/$browseId/alternatives",
-                                header = headerContent,
-                                initialPlaceholderCount = 1,
-                                continuationPlaceholderCount = 1,
-                                emptyItemsText = stringResource(R.string.no_alternative_version),
-                                provider = albumPage?.let {
-                                    {
-                                        Result.success(
-                                            Innertube.ItemsPage(
-                                                items = albumPage?.otherVersions,
-                                                continuation = null
-                                            )
-                                        )
-                                    }
-                                },
-                                itemContent = { album ->
-                                    AlbumItem(
-                                        album = album,
-                                        thumbnailSize = Dimensions.thumbnails.album,
-                                        modifier = Modifier.clickable { albumRoute(album.key) }
-                                    )
-                                },
-                                itemPlaceholderContent = {
-                                    AlbumItemPlaceholder(thumbnailSize = Dimensions.thumbnails.album)
-                                }
-                            )
+                },
+                bookmarked = album?.bookmarkedAt != null,
+                onBookmark = {
+                    album?.let { current ->
+                        query {
+                            Database.update(current.copy(bookmarkedAt =
+                                if (current.bookmarkedAt == null) System.currentTimeMillis()
+                                else null))
                         }
                     }
-                }
-            }
+                },
+                emptyMessage = "Loading album tracks..."
+            )
         }
     }
 }
