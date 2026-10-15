@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -208,11 +209,20 @@ private fun <T : Innertube.Item> RavynResultList(
     LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(
         start = 18.dp, end = 18.dp, bottom = 25.dp
     )) {
-        items(page?.items.orEmpty(), key = { it.key }) { item ->
-            itemContent(item)
+        item(key = "loading-state") {
+            RavynReveal(
+                ready = page != null || failed,
+                title = "Finding music",
+                style = RavynPlaceholderStyle.Tracks
+            ) {}
         }
-        if (loading) item { RavynLabel("Loading music...", 13, RavynStyle.secondary,
-            modifier = Modifier.padding(vertical = 20.dp)) }
+        itemsIndexed(page?.items.orEmpty(), key = { _, item -> item.key }) { index, item ->
+            RavynRowEntrance(index) { itemContent(item) }
+        }
+        if (loading && page != null) item {
+            RavynLabel("Loading more...", 13, RavynStyle.secondary,
+                modifier = Modifier.padding(vertical = 20.dp))
+        }
         if (failed && !loading) item {
             Column {
                 RavynLabel("Couldn't load these results.", 14, RavynStyle.secondary)

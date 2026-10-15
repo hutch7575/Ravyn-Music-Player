@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -26,7 +27,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.dp
 
 /**
@@ -148,4 +155,31 @@ private fun RavynLoadingSection(title: String, style: RavynPlaceholderStyle) {
             }
         }
     }
+}
+
+/** Keep rows laid out while gently fading/raising them into place after data arrives. */
+@Composable
+internal fun RavynRowEntrance(
+    index: Int,
+    content: @Composable () -> Unit
+) {
+    var appeared by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay((index * 38L).coerceAtMost(230L))
+        appeared = true
+    }
+    val opacity by animateFloatAsState(
+        if (appeared) 1f else 0f,
+        animationSpec = tween(290, easing = FastOutSlowInEasing),
+        label = "Row opacity"
+    )
+    val position by animateFloatAsState(
+        if (appeared) 0f else 12f,
+        animationSpec = tween(310, easing = FastOutSlowInEasing),
+        label = "Row position"
+    )
+    Box(Modifier.graphicsLayer {
+        alpha = opacity
+        translationY = position
+    }) { content() }
 }
