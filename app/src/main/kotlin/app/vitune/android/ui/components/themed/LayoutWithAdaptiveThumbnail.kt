@@ -72,7 +72,7 @@ fun adaptiveThumbnailContent(
             contentAlignment = Alignment.Center,
             modifier = innerModifier.background(colorPalette.background2)
         ) {
-            if (isLoading || artworkLoading) CircularProgressIndicator(
+            if (isLoading || (url != null && artworkLoading)) CircularProgressIndicator(
                 color = colorPalette.accent,
                 strokeWidth = 2.dp,
                 modifier = Modifier.size(24.dp)
