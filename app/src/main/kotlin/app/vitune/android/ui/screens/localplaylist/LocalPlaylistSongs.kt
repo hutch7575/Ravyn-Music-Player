@@ -333,7 +333,7 @@ fun LocalPlaylistSongs(
     }
 }
 
-private suspend fun sync(
+internal suspend fun sync(
     playlist: Playlist,
     browseId: String
 ) = runCatching {
