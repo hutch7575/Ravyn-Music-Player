@@ -57,6 +57,7 @@ fun RavynCollectionDetail(
     bookmarked: Boolean? = null,
     onBookmark: (() -> Unit)? = null,
     onMenu: (() -> Unit)? = null,
+    subnav: @Composable () -> Unit = {},
     emptyMessage: String = "No songs here yet"
 ) {
     val accent = ravynAccent()
@@ -77,6 +78,7 @@ fun RavynCollectionDetail(
             if (onMenu != null) RavynIcon(
                 R.drawable.ellipsis_horizontal, "More options", onMenu)
         }
+        subnav()
         LazyColumn(contentPadding = PaddingValues(bottom = 35.dp)) {
             item {
                 Column(horizontalAlignment = Alignment.CenterHorizontally,

@@ -1,6 +1,9 @@
 package app.vitune.android.ui.screens.builtinplaylist
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -79,6 +82,8 @@ import kotlinx.coroutines.flow.map
 @Composable
 fun BuiltInPlaylistSongs(
     builtInPlaylist: BuiltInPlaylist,
+    onBack: () -> Unit = {},
+    onSelect: (BuiltInPlaylist) -> Unit = {},
     modifier: Modifier = Modifier
 ) = with(DataPreferences) {
     val (colorPalette) = LocalAppearance.current
@@ -128,197 +133,48 @@ fun BuiltInPlaylistSongs(
         }.collect { songs = it.toImmutableList() }
     }
 
-    val lazyListState = rememberLazyListState()
 
-    val [currentMediaId, playing] = playingSong(binder)
-
-    Box(modifier = modifier) {
-        LazyColumn(
-            state = lazyListState,
-            contentPadding = LocalPlayerAwareWindowInsets.current
-                .only(WindowInsetsSides.Vertical + WindowInsetsSides.End)
-                .asPaddingValues(),
-            modifier = Modifier
-                .background(colorPalette.background0)
-                .fillMaxSize()
-        ) {
-            item(
-                key = "header",
-                contentType = 0
-            ) {
-                if (builtInPlaylist == BuiltInPlaylist.Favorites) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(
-                            start = 16.dp, end = 16.dp, top = 20.dp, bottom = 16.dp
-                        )
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                                .background(colorPalette.background1, androidx.compose.foundation.shape.RoundedCornerShape(13.dp))
-                                .padding(18.dp)
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                BasicText("Liked Songs", style = TextStyle(
-                                    color = colorPalette.text, fontSize = 25.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                ))
-                                Spacer(Modifier.height(6.dp))
-                                BasicText("${songs.size} songs", style = TextStyle(
-                                    color = colorPalette.textSecondary, fontSize = 12.sp
-                                ))
-                            }
-                            Box(contentAlignment = Alignment.Center,
-                                modifier = Modifier.size(50.dp)
-                                    .background(colorPalette.accent, CircleShape)
-                                    .clickable(enabled = songs.isNotEmpty()) {
-                                        binder?.stopRadio()
-                                        binder?.player?.forcePlayFromBeginning(songs.map(Song::asMediaItem))
-                                    }
-                            ) {
-                                Image(painterResource(R.drawable.play), "Play liked songs",
-                                    colorFilter = ColorFilter.tint(Color(0xFF101214)),
-                                    modifier = Modifier.size(24.dp))
-                            }
-                        }
-                        Spacer(Modifier.height(14.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically) {
-                            RavynSortChip("Recent", sortBy == SongSortBy.DateAdded) {
-                                sortBy = SongSortBy.DateAdded
-                            }
-                            RavynSortChip("A–Z", sortBy == SongSortBy.Title) {
-                                sortBy = SongSortBy.Title
-                            }
-                            Spacer(Modifier.weight(1f))
-                            PlaylistDownloadIcon(songs = songs.map(Song::asMediaItem).toImmutableList())
-                        }
-                    }
-                } else {
-                Header(
-                    title = when (builtInPlaylist) {
-                        BuiltInPlaylist.Favorites -> stringResource(R.string.favorites)
-
-                        BuiltInPlaylist.Offline -> stringResource(R.string.offline)
-
-                        BuiltInPlaylist.Top -> stringResource(
-                            R.string.format_my_top_playlist,
-                            topListLength
-                        )
-
-                        BuiltInPlaylist.History -> stringResource(R.string.history)
-                    },
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    SecondaryTextButton(
-                        text = stringResource(R.string.enqueue),
-                        enabled = songs.isNotEmpty(),
-                        onClick = {
-                            binder?.player?.enqueue(songs.map(Song::asMediaItem))
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    if (builtInPlaylist != BuiltInPlaylist.Offline) PlaylistDownloadIcon(
-                        songs = songs.map(Song::asMediaItem).toImmutableList()
-                    )
-
-                    if (builtInPlaylist.sortable) HeaderSongSortBy(
-                        sortBy = sortBy,
-                        setSortBy = { sortBy = it },
-                        sortOrder = sortOrder,
-                        setSortOrder = { sortOrder = it }
-                    )
-
-                    if (builtInPlaylist == BuiltInPlaylist.Top) {
-                        var dialogShowing by rememberSaveable { mutableStateOf(false) }
-
-                        SecondaryTextButton(
-                            text = topListPeriod.displayName(),
-                            onClick = { dialogShowing = true }
-                        )
-
-                        if (dialogShowing) ValueSelectorDialog(
-                            onDismiss = { dialogShowing = false },
-                            title = stringResource(
-                                R.string.format_view_top_of_header,
-                                topListLength
-                            ),
-                            selectedValue = topListPeriod,
-                            values = DataPreferences.TopListPeriod.entries.toImmutableList(),
-                            onValueSelect = { topListPeriod = it },
-                            valueText = { it.displayName() }
-                        )
-                    }
-                }
-                }
+    app.vitune.android.ui.ravyn.RavynCollectionDetail(
+        title = when (builtInPlaylist) {
+            BuiltInPlaylist.Favorites -> "Liked Songs"
+            BuiltInPlaylist.Offline -> "Offline music"
+            BuiltInPlaylist.Top -> "Your top songs"
+            BuiltInPlaylist.History -> "Listening history"
+        },
+        artist = "Your music",
+        artwork = songs.firstOrNull()?.thumbnailUrl,
+        tracks = songs,
+        onBack = onBack,
+        onPlay = { index ->
+            binder?.stopRadio()
+            binder?.player?.forcePlayAtIndex(songs.map { it.asMediaItem }, index)
+        },
+        onShuffle = {
+            binder?.stopRadio()
+            binder?.player?.forcePlayFromBeginning(
+                songs.shuffled().map { it.asMediaItem }
+            )
+        },
+        onLike = { song ->
+            app.vitune.android.query {
+                Database.like(song.id,
+                    if (song.likedAt == null) System.currentTimeMillis() else null)
             }
-
-            itemsIndexed(
-                items = songs,
-                key = { _, song -> song.id },
-                contentType = { _, song -> song }
-            ) { index, song ->
-                SongItem(
-                    modifier = Modifier
-                        .combinedClickable(
-                            onLongClick = {
-                                menuState.display {
-                                    when (builtInPlaylist) {
-                                        BuiltInPlaylist.Offline -> InHistoryMediaItemMenu(
-                                            song = song,
-                                            onDismiss = menuState::hide
-                                        )
-
-                                        BuiltInPlaylist.Favorites,
-                                        BuiltInPlaylist.Top,
-                                        BuiltInPlaylist.History -> NonQueuedMediaItemMenu(
-                                            mediaItem = song.asMediaItem,
-                                            onDismiss = menuState::hide
-                                        )
-                                    }
-                                }
-                            },
-                            onClick = {
-                                binder?.stopRadio()
-                                binder?.player?.forcePlayAtIndex(
-                                    items = songs.map(Song::asMediaItem),
-                                    index = index
-                                )
-                            }
-                        )
-                        .animateItem(),
-                    song = song,
-                    index = if (builtInPlaylist == BuiltInPlaylist.Top) index else null,
-                    thumbnailSize = Dimensions.thumbnails.song,
-                    trailingContent = if (builtInPlaylist == BuiltInPlaylist.Favorites) {
-                        {
-                            Image(
-                                painter = painterResource(R.drawable.heart),
-                                contentDescription = "Remove from liked songs",
-                                colorFilter = ColorFilter.tint(colorPalette.accent),
-                                modifier = Modifier.size(20.dp).clickable {
-                                    app.vitune.android.query { Database.like(song.id, null) }
-                                }
-                            )
-                        }
-                    } else null,
-                    isPlaying = playing && currentMediaId == song.id
-                )
+        },
+        subnav = {
+            androidx.compose.foundation.layout.Row(
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .horizontalScroll(androidx.compose.foundation.rememberScrollState())
+                    .padding(horizontal = 17.dp, vertical = 11.dp)
+            ) {
+                listOf("Liked", "Offline", "Top", "History")
+                    .forEachIndexed { index, label ->
+                        app.vitune.android.ui.ravyn.RavynPill(
+                            label, builtInPlaylist.ordinal == index
+                        ) { onSelect(BuiltInPlaylist.entries[index]) }
+                    }
             }
         }
-
-        FloatingActionsContainerWithScrollToTop(
-            lazyListState = lazyListState,
-            icon = R.drawable.shuffle,
-            onClick = {
-                if (songs.isEmpty()) return@FloatingActionsContainerWithScrollToTop
-                binder?.stopRadio()
-                binder?.player?.forcePlayFromBeginning(
-                    songs.shuffled().map(Song::asMediaItem)
-                )
-            }
-        )
-    }
+    )
 }
