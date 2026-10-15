@@ -67,6 +67,7 @@ fun HomeScreen() {
                 topIconButtonId = R.drawable.search,
                 onTopIconButtonClick = { searchRoute("") },
                 onDrawerSettingsClick = { settingsRoute() },
+                onHistoryClick = { builtInPlaylistRoute(BuiltInPlaylist.History) },
                 tabIndex = UIStatePreferences.homeScreenTabIndex,
                 onTabChange = { UIStatePreferences.homeScreenTabIndex = it },
                 tabColumnContent = {

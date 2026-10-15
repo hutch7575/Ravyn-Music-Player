@@ -29,6 +29,7 @@ fun Scaffold(
     topIconButtonId: Int,
     onTopIconButtonClick: () -> Unit,
     onDrawerSettingsClick: () -> Unit = onTopIconButtonClick,
+    onHistoryClick: (() -> Unit)? = null,
     tabIndex: Int,
     onTabChange: (Int) -> Unit,
     tabColumnContent: TabsBuilder.() -> Unit,
@@ -66,6 +67,7 @@ fun Scaffold(
             settingsIcon = topIconButtonId,
             onSettingsClick = onTopIconButtonClick,
             onDrawerSettingsClick = onDrawerSettingsClick,
+            onHistoryClick = onHistoryClick,
             showDrawer = key == "home",
             pageTitle = when (key) {
                 "settings" -> "Settings"

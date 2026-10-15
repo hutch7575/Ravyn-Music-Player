@@ -74,6 +74,7 @@ fun RavynHomeNavigation(
     @DrawableRes settingsIcon: Int,
     onSettingsClick: () -> Unit,
     onDrawerSettingsClick: () -> Unit = onSettingsClick,
+    onHistoryClick: (() -> Unit)? = null,
     showDrawer: Boolean = true,
     pageTitle: String = "Ravyn",
     content: @Composable () -> Unit
@@ -116,6 +117,8 @@ fun RavynHomeNavigation(
                 )
                 if (showDrawer) {
                     NavIcon(R.drawable.search, "Search", palette.text, onSettingsClick)
+                    if (onHistoryClick != null)
+                        NavIcon(R.drawable.history, "History", palette.text, onHistoryClick)
                     NavIcon(R.drawable.settings, "Settings", palette.text, onDrawerSettingsClick)
                 }
             }

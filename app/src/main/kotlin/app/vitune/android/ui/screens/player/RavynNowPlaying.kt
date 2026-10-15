@@ -233,7 +233,7 @@ fun RavynNowPlaying(
             RavynTimeLabel(position)
             if (media != null && media.duration > 0L &&
                 media.duration != androidx.media3.common.C.TIME_UNSET) {
-                RavynTimeLabel((media.duration - position).coerceAtLeast(0L), remaining = true)
+                RavynTimeLabel(media.duration)
             } else {
                 BasicText("--:--", style = TextStyle(color = secondaryText, fontSize = 12.sp))
             }
