@@ -111,6 +111,11 @@ fun RavynRoot(
     var artists by remember { mutableStateOf<List<Artist>>(emptyList()) }
     var playlists by remember { mutableStateOf<List<PlaylistPreview>>(emptyList()) }
     var related by remember { mutableStateOf<Innertube.RelatedPage?>(null) }
+    var historyLoaded by remember { mutableStateOf(false) }
+    var artistsLoaded by remember { mutableStateOf(false) }
+    var playlistsLoaded by remember { mutableStateOf(false) }
+    var albumsLoaded by remember { mutableStateOf(false) }
+    var relatedLoaded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { Database.favorites().collect { liked = it } }
     LaunchedEffect(Unit) {
@@ -123,24 +128,41 @@ fun RavynRoot(
     LaunchedEffect(Unit) {
         Database.events().collect { events ->
             recent = events.map { it.song }.distinctBy { it.id }.take(24)
+            historyLoaded = true
         }
     }
     LaunchedEffect(Unit) {
-        Database.albums(AlbumSortBy.DateAdded, SortOrder.Descending).collect { albums = it }
+        Database.albums(AlbumSortBy.DateAdded, SortOrder.Descending).collect {
+            albums = it
+            albumsLoaded = true
+        }
     }
     LaunchedEffect(Unit) {
-        Database.artists(ArtistSortBy.Name, SortOrder.Ascending).collect { artists = it }
+        Database.artists(ArtistSortBy.Name, SortOrder.Ascending).collect {
+            artists = it
+            artistsLoaded = true
+        }
     }
     LaunchedEffect(Unit) {
         Database.playlistPreviews(PlaylistSortBy.DateAdded, SortOrder.Descending)
-            .collect { playlists = it }
+            .collect {
+                playlists = it
+                playlistsLoaded = true
+            }
     }
-    LaunchedEffect(recent.firstOrNull()?.id) {
-        related = runCatching {
-            Innertube.relatedPage(
-                NextBody(videoId = recent.firstOrNull()?.id ?: "J7p4bzqLvCw")
-            )?.getOrNull()
-        }.getOrNull()
+    LaunchedEffect(historyLoaded, recent.firstOrNull()?.id) {
+        if (!historyLoaded) return@LaunchedEffect
+        val videoId = recent.firstOrNull()?.id
+        if (videoId == null) {
+            related = null
+            relatedLoaded = true
+        } else {
+            if (!relatedLoaded) related = null
+            related = runCatching {
+                Innertube.relatedPage(NextBody(videoId = videoId))?.getOrNull()
+            }.getOrNull()
+            relatedLoaded = true
+        }
     }
 
     if (showCreate) AlertDialog(
@@ -216,6 +238,9 @@ fun RavynRoot(
             if (active == 0) RavynHome(
                 recent = recent, artists = artists, albums = albums,
                 playlists = playlists, related = related,
+                historyLoaded = historyLoaded, artistsLoaded = artistsLoaded,
+                playlistsLoaded = playlistsLoaded, albumsLoaded = albumsLoaded,
+                relatedLoaded = relatedLoaded,
                 onArtist = onArtist, onAlbum = onAlbum,
                 onOnlinePlaylist = onOnlinePlaylist, onLocalPlaylist = onLocalPlaylist,
                 onDiscover = onDiscover,
@@ -271,6 +296,11 @@ private fun RavynHome(
     albums: List<Album>,
     playlists: List<PlaylistPreview>,
     related: Innertube.RelatedPage?,
+    historyLoaded: Boolean,
+    artistsLoaded: Boolean,
+    playlistsLoaded: Boolean,
+    albumsLoaded: Boolean,
+    relatedLoaded: Boolean,
     onArtist: (String) -> Unit,
     onAlbum: (String) -> Unit,
     onOnlinePlaylist: (Innertube.PlaylistItem) -> Unit,
@@ -289,7 +319,14 @@ private fun RavynHome(
                 RavynHomeCategoryChip()
             }
         }
-        if (artists.isNotEmpty() || !related?.artists.isNullOrEmpty()) item {
+        item(key = "artists") {
+            RavynReveal(
+                ready = artistsLoaded && (artists.isNotEmpty() || relatedLoaded),
+                title = "Your favorite artists",
+                style = RavynPlaceholderStyle.Artists
+            ) {
+                if (artists.isNotEmpty() || !related?.artists.isNullOrEmpty()) {
+
             Column {
                 RavynSection("Your favorite artists", Modifier.padding(horizontal = 17.dp))
                 Spacer(Modifier.height(10.dp))
@@ -310,8 +347,17 @@ private fun RavynHome(
                     }
                 }
             }
+                }
+            }
         }
-        if (recent.isNotEmpty()) item {
+        item(key = "recent") {
+            RavynReveal(
+                ready = historyLoaded,
+                title = "Recently played",
+                style = RavynPlaceholderStyle.Recent
+            ) {
+                if (recent.isNotEmpty()) {
+
             Column {
                 RavynSection("Recently played", Modifier.padding(horizontal = 17.dp))
                 Spacer(Modifier.height(10.dp))
@@ -324,8 +370,17 @@ private fun RavynHome(
                     }
                 }
             }
+                }
+            }
         }
-        if (!related?.playlists.isNullOrEmpty() || playlists.isNotEmpty()) item {
+        item(key = "mixes") {
+            RavynReveal(
+                ready = playlistsLoaded && (playlists.isNotEmpty() || relatedLoaded),
+                title = "Made for you",
+                style = RavynPlaceholderStyle.Albums
+            ) {
+                if (!related?.playlists.isNullOrEmpty() || playlists.isNotEmpty()) {
+
             Column {
                 RavynSection("Made for you", Modifier.padding(horizontal = 17.dp))
                 Spacer(Modifier.height(10.dp))
@@ -346,8 +401,17 @@ private fun RavynHome(
                     }
                 }
             }
+                }
+            }
         }
-        if (albums.isNotEmpty() || !related?.albums.isNullOrEmpty()) item {
+        item(key = "albums") {
+            RavynReveal(
+                ready = albumsLoaded && (albums.isNotEmpty() || relatedLoaded),
+                title = "Albums for you",
+                style = RavynPlaceholderStyle.Albums
+            ) {
+                if (albums.isNotEmpty() || !related?.albums.isNullOrEmpty()) {
+
             Column {
                 RavynSection("Albums for you", Modifier.padding(horizontal = 18.dp))
                 Spacer(Modifier.height(10.dp))
@@ -368,8 +432,17 @@ private fun RavynHome(
                     }
                 }
             }
+                }
+            }
         }
-        if (!related?.songs.isNullOrEmpty()) item {
+        item(key = "tracks") {
+            RavynReveal(
+                ready = relatedLoaded,
+                title = "Tracks for you",
+                style = RavynPlaceholderStyle.Tracks
+            ) {
+                if (!related?.songs.isNullOrEmpty()) {
+
             Column(Modifier.padding(horizontal = 18.dp)) {
                 RavynSection("Tracks for you")
                 Spacer(Modifier.height(9.dp))
@@ -390,8 +463,11 @@ private fun RavynHome(
                     }
                 }
             }
+                }
+            }
         }
-        if (recent.isEmpty() && related == null) item {
+        if (historyLoaded && relatedLoaded && recent.isEmpty() &&
+            playlists.isEmpty() && artists.isEmpty()) item {
             Column(Modifier.padding(24.dp)) {
                 RavynLabel("Start listening", 21, bold = true)
                 RavynLabel("Search for music to build your recommendations.", 13,
