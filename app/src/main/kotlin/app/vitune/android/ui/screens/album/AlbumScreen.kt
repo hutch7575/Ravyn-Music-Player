@@ -140,13 +140,13 @@ fun AlbumScreen(browseId: String) {
                 onPlay = { index ->
                     binder?.stopRadio()
                     binder?.player?.forcePlayAtIndex(
-                        songs.map(app.vitune.android.models.Song::asMediaItem), index
+                        songs.map { it.asMediaItem }, index
                     )
                 },
                 onShuffle = {
                     binder?.stopRadio()
                     binder?.player?.forcePlayFromBeginning(
-                        songs.shuffled().map(app.vitune.android.models.Song::asMediaItem)
+                        songs.shuffled().map { it.asMediaItem }
                     )
                 },
                 onLike = { song ->
