@@ -28,7 +28,7 @@ class ConditionalReadOnlyCache(
     }
 
     override fun releaseHoleSpan(holeSpan: CacheSpan) {
-        stub()
+        // Releasing a span is cleanup, not a write; blocking it leaks cache locks.
         cache.releaseHoleSpan(holeSpan)
     }
 }
