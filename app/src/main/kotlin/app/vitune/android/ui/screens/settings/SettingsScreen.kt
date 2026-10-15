@@ -287,12 +287,16 @@ fun SettingsEntry(
     horizontalArrangement = Arrangement.spacedBy(16.dp),
     verticalAlignment = Alignment.CenterVertically,
     modifier = modifier
-        .clip(RoundedCornerShape(8.dp))
+        .fillMaxWidth()
+        .padding(horizontal = if (usePadding) 16.dp else 0.dp, vertical = 4.dp)
+        .background(
+            LocalAppearance.current.colorPalette.background1,
+            RoundedCornerShape(12.dp)
+        )
+        .clip(RoundedCornerShape(12.dp))
         .clickable(enabled = isEnabled, onClick = onClick)
         .alpha(if (isEnabled) 1f else 0.5f)
-        .let { if (usePadding) it.padding(start = 32.dp, end = 16.dp) else it }
-        .padding(vertical = 14.dp)
-        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 15.dp)
 ) {
     val (colorPalette, typography) = LocalAppearance.current
 
@@ -370,13 +374,14 @@ fun SettingsCategoryScreen(
                     .asPaddingValues()
             )
     ) {
-        Header(title = title) {
-            description?.let { description ->
-                BasicText(
-                    text = description,
-                    style = typography.s.secondary
+        Column(modifier = Modifier.fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 16.dp)) {
+            app.vitune.android.ui.ravyn.RavynLabel(title, 23, bold = true)
+            if (description != null) {
+                Spacer(Modifier.height(7.dp))
+                app.vitune.android.ui.ravyn.RavynLabel(
+                    description, 13, colorPalette.textSecondary, lines = 3
                 )
-                SettingsGroupSpacer()
             }
         }
 
