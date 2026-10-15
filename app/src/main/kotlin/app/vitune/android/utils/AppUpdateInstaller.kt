@@ -41,15 +41,15 @@ object AppUpdateInstaller {
             runCatching {
                 val source = URL(url)
                 require(source.protocol == "https" && source.host == "github.com") {
-                    "Updates must come from the official ViTune Classic GitHub releases"
+                    "Updates must come from the official Ravyn GitHub releases"
                 }
-                require(source.path.startsWith("/hutch7575/ViTune-Classic/releases/download/")) {
+                require(source.path.startsWith("/hutch7575/Ravyn/releases/download/")) {
                     "Unrecognized update source"
                 }
 
                 val folder = File(context.cacheDir, "updates").apply { mkdirs() }
-                val partial = File(folder, "vitune-classic.part")
-                val destination = File(folder, "vitune-classic.apk")
+                val partial = File(folder, "ravyn.part")
+                val destination = File(folder, "ravyn.apk")
                 partial.delete()
                 try {
                     val connection = (source.openConnection() as HttpURLConnection).apply {

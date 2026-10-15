@@ -65,7 +65,7 @@ import kotlin.time.toJavaDuration
 
 private val VERSION_NAME = BuildConfig.VERSION_NAME.substringBeforeLast("-")
 private const val REPO_OWNER = "hutch7575"
-private const val REPO_NAME = "ViTune-Classic"
+private const val REPO_NAME = "Ravyn"
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 private val permission = Manifest.permission.POST_NOTIFICATIONS
@@ -122,7 +122,7 @@ class VersionCheckWorker(
                 this
                     .setSmallIcon(R.drawable.download)
                     .setContentTitle(getString(R.string.new_version_available))
-                    .setContentText("Open ViTune Classic to download the new version")
+                    .setContentText("Open Ravyn to download the new version")
                     .also {
                         it.setContentIntent(
                             pendingIntent(Intent(applicationContext, MainActivity::class.java))
@@ -166,7 +166,7 @@ private suspend fun Version.getNewerVersion(): Result<Release?>? = GitHub.releas
 @Route
 @Composable
 fun About() = SettingsCategoryScreen(
-    title = "ViTune Classic",
+    title = "Ravyn",
     description = "Version ${BuildConfig.VERSION_NAME} · Based on ViTune · GPL-3.0"
 ) {
     val [_, typography] = LocalAppearance.current
@@ -190,7 +190,7 @@ fun About() = SettingsCategoryScreen(
     SettingsGroup(title = "Updates") {
         SettingsEntry(
             title = "Check for updates",
-            text = "Check ViTune Classic releases · ${BuildConfig.VERSION_NAME}",
+            text = "Check Ravyn releases · ${BuildConfig.VERSION_NAME}",
             onClick = {
                 checkingUpdates = true
                 downloadError = null
@@ -223,11 +223,11 @@ fun About() = SettingsCategoryScreen(
         )
         SettingsEntry(
             title = stringResource(R.string.report_bug),
-            text = "Report an issue with ViTune Classic",
+            text = "Report an issue with Ravyn",
             onClick = { uriHandler.openUri("https://github.com/$REPO_OWNER/$REPO_NAME/issues/new") }
         )
         SettingsDescription(
-            text = "ViTune Classic is based on ViTune and retains the work and licenses " +
+            text = "Ravyn is based on ViTune and retains the work and licenses " +
                 "of its original contributors. Not affiliated with Google or YouTube."
         )
     }
@@ -245,7 +245,7 @@ fun About() = SettingsCategoryScreen(
         val release = newest?.getOrNull()
         if (release != null) {
             BasicText(
-                text = "ViTune Classic ${release.tag} is available",
+                text = "Ravyn ${release.tag} is available",
                 style = typography.m.bold.center,
                 modifier = Modifier.padding(16.dp)
             )
@@ -298,7 +298,7 @@ fun About() = SettingsCategoryScreen(
             )
         } else {
             BasicText(
-                text = "You're up to date. No newer ViTune Classic release is available yet.",
+                text = "You're up to date. No newer Ravyn release is available yet.",
                 style = typography.xs.center,
                 modifier = Modifier.padding(16.dp)
             )

@@ -1,59 +1,46 @@
-# Publishing ViTune Classic APK updates
+# Publishing Ravyn APK releases
 
-ViTune Classic checks GitHub Releases (this repository) for newer versions and can
-download a **signed universal APK** from within the app. Android still asks the
-user to approve installation, and enforces that updates use the same signing key.
+Ravyn checks [GitHub Releases](https://github.com/hutch7575/Ravyn/releases) for newer versions and can download a **signed universal APK** from within the app. Android asks users to approve installation and enforces update signing compatibility.
 
-## One-time setup
+## Before the first release
 
-1. Create a permanent Android release signing keystore with `keytool` on a
-   trusted computer. Keep an offline copy of the keystore and passwords; losing
-   it means existing installations cannot receive compatible APK updates.
-2. Set these GitHub Actions repository secrets under
-   **Settings → Secrets and variables → Actions**:
-   - `ANDROID_RELEASE_KEYSTORE_BASE64` — base64 of the complete keystore file
+1. Rename this repository to **Ravyn** in **Settings → General → Repository name**. The update checker and installer expect `hutch7575/Ravyn`; do not publish while the repository still has the previous name.
+2. Create a permanent Android release signing keystore on a trusted computer. **Keep an offline copy** of the file, alias and passwords. If you lose it, Android cannot install future updates over existing releases.
+3. Add these GitHub Actions repository secrets in **Settings → Secrets and variables → Actions**:
+   - `ANDROID_RELEASE_KEYSTORE_BASE64`: base64 encoding of the complete keystore
    - `ANDROID_RELEASE_STORE_PASSWORD`
    - `ANDROID_RELEASE_KEY_ALIAS`
    - `ANDROID_RELEASE_KEY_PASSWORD`
-3. Never commit the keystore or its passwords to this repository.
+4. Never commit a keystore, its base64 contents, or passwords to GitHub, and don't paste them into chat.
 
-For example, create a keystore on a computer with a JDK:
+Example using a JDK:
 
 ```bash
-keytool -genkeypair -v -keystore vitune-classic-release.jks -alias vitune-classic -keyalg RSA -keysize 3072 -validity 10000
-base64 -w 0 vitune-classic-release.jks
+keytool -genkeypair -v -keystore ravyn-release.jks -alias ravyn -keyalg RSA -keysize 3072 -validity 10000
+base64 -w 0 ravyn-release.jks
 ```
 
-On macOS use `base64 < vitune-classic-release.jks | tr -d '\n'`
-instead of `-w 0`. Do not paste the private key or secret into a chat.
+On Windows PowerShell, obtain base64 with `[Convert]::ToBase64String([IO.File]::ReadAllBytes("ravyn-release.jks"))`. Save the keystore securely and enter the base64 as the corresponding GitHub secret. On macOS, run `base64 < ravyn-release.jks | tr -d '\n'`.
 
-## Publish an update
+## Publishing
 
-After merging and testing the changes on `master`, choose a new semantic version,
-for example `v1.2.5` (the original fork's version is `1.2.4`).
-
-Create a tag at the intended `master` commit and push it:
+Merge the tested changes to `master`, then create and push a version tag:
 
 ```bash
 git checkout master
 git pull
-git tag v1.2.5
-git push origin v1.2.5
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-GitHub Actions builds a universal, signed APK and publishes a GitHub Release.
-The app discovers the release by its version tag and downloadable `.apk` asset.
-The workflow derives a monotonically increasing Android `versionCode` from
-MAJOR.MINOR.PATCH; never reuse a version number.
+The [release workflow](../.github/workflows/android-release.yml) builds a release-signed **universal** APK and creates a public GitHub Release with the asset named `Ravyn-v1.0.0.apk`. The in-app updater only selects production APK assets, not debug/nightly artifacts.
 
-## Important limitations
+Use a new semantic version for every subsequent release. The workflow derives `versionCode` from `MAJOR.MINOR.PATCH`; never reuse a tag.
 
-- The production APK uses application ID `app.vitune.classic`.
-- GitHub debug builds use `app.vitune.classic.debug` and usually have **different,
-  disposable debug signing keys**. They are not eligible for in-app production
-  updates. Export a library backup before changing debug builds.
-- You must keep the same release signing key for every subsequent update.
-- If Android hasn't allowed this app to install updates, the app opens the
-  Android permission screen and the user must retry after approving.
-- No GitHub release exists until the first signed release is published.
-- Always verify backup/restore and favourites on a test device before releasing.
+## Important
+
+- Production Android application ID: `app.ravyn.music` (changed before the first Ravyn release).
+- Debug ID: `app.ravyn.music.debug`. Debug builds use different signing keys and cannot be updated in place with production APKs.
+- Existing `app.vitune.classic` and `app.vitune.classic.debug` installs remain separate. Export a library backup from the previous app, install Ravyn, and import the backup.
+- Keep using the **same release signing keystore** for every future production version.
+- Test backup/restore, favourites and playback on a device before tagging a release.

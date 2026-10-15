@@ -20,7 +20,7 @@ android {
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
-        applicationId = "app.vitune.classic"
+        applicationId = "app.ravyn.music"
 
         minSdk = 24
         targetSdk = 37
@@ -70,7 +70,7 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-DEBUG"
-            manifestPlaceholders["appName"] = "ViTune Classic Debug"
+            manifestPlaceholders["appName"] = "Ravyn Debug"
         }
 
         release {
@@ -80,7 +80,7 @@ android {
             versionNameSuffix = "-RELEASE"
             isMinifyEnabled = true
             isShrinkResources = true
-            manifestPlaceholders["appName"] = "ViTune Classic"
+            manifestPlaceholders["appName"] = "Ravyn"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -93,7 +93,7 @@ android {
 
             applicationIdSuffix = ".nightly"
             versionNameSuffix = "-NIGHTLY"
-            manifestPlaceholders["appName"] = "ViTune Classic Nightly"
+            manifestPlaceholders["appName"] = "Ravyn Nightly"
             signingConfig = signingConfigs.findByName("ci")
         }
     }

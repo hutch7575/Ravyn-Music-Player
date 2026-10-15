@@ -23,7 +23,7 @@ val topLevelLibs = libs
 
 allprojects {
     group = "app.vitune"
-    version = providers.gradleProperty("releaseVersion").orNull ?: "1.2.4"
+    version = providers.gradleProperty("releaseVersion").orNull ?: "1.0.0"
 
     apply(plugin = "dev.detekt")
 

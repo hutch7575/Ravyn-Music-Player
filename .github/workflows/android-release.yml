@@ -1,4 +1,4 @@
-name: Signed ViTune Classic release
+name: Signed Ravyn release
 on:
   push:
     tags:
@@ -43,8 +43,8 @@ jobs:
           test -n "$KEYSTORE_BASE64" && test -n "$STORE_PASSWORD" && test -n "$KEY_ALIAS" && test -n "$KEY_PASSWORD" || {
             echo "Missing release signing secrets. See docs/RELEASING.md"; exit 1;
           }
-          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/vitune-classic-release.jks"
-          echo "ANDROID_RELEASE_KEYSTORE=$RUNNER_TEMP/vitune-classic-release.jks" >> "$GITHUB_ENV"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/ravyn-release.jks"
+          echo "ANDROID_RELEASE_KEYSTORE=$RUNNER_TEMP/ravyn-release.jks" >> "$GITHUB_ENV"
       - name: Build signed universal APK
         env:
           ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
@@ -68,9 +68,9 @@ jobs:
           ANDROID_VERSION_CODE="$CODE" ./gradlew :app:assembleRelease -PreleaseVersion="$VERSION" --no-daemon --stacktrace
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*universal*release*.apk' -print -quit)"
           test -n "$APK" || { echo "Universal release APK not found"; exit 1; }
-          cp "$APK" "ViTune-Classic-$GITHUB_REF_NAME.apk"
+          cp "$APK" "Ravyn-$GITHUB_REF_NAME.apk"
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "ViTune-Classic-$GITHUB_REF_NAME.apk" --title "ViTune Classic $GITHUB_REF_NAME" --generate-notes
+          gh release create "$GITHUB_REF_NAME" "Ravyn-$GITHUB_REF_NAME.apk" --title "Ravyn $GITHUB_REF_NAME" --generate-notes
