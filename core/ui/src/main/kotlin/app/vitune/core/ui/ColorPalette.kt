@@ -107,6 +107,12 @@ private fun lightColorPalette(hue: Float, saturation: Float) = ColorPalette(
     isDark = false
 )
 
+private fun darkColorPalette(accent: Hsl, darkness: Darkness) = darkColorPalette(
+    hue = accent.hue,
+    saturation = accent.saturation,
+    darkness = darkness
+)
+
 private fun darkColorPalette(
     hue: Float,
     saturation: Float,
