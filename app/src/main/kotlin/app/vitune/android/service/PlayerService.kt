@@ -46,6 +46,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.ContentMetadata
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
@@ -181,6 +182,8 @@ private const val LOOP_ACTION = "app.vitune.android.LOOP"
 class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListener.Callback {
     private lateinit var mediaSession: MediaSession
     private lateinit var cache: Cache
+    private val streamUriCache = UriCache<String, Long?>()
+    private var playbackRecoveryAttempts = 0
     private lateinit var player: ExoPlayer
 
     private val defaultActions =
@@ -491,6 +494,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        playbackRecoveryAttempts = 0
         if (
             AppearancePreferences.hideExplicit &&
             mediaItem?.mediaMetadata?.extras?.songBundle?.explicit == true
@@ -526,10 +530,11 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     override fun onPlayerError(error: PlaybackException) {
         super.onPlayerError(error)
 
-        if (
-            error.findCause<InvalidResponseCodeException>()?.responseCode == 416
-        ) {
-            player.pause()
+        val httpCode = error.findCause<InvalidResponseCodeException>()?.responseCode
+        // Refresh stale URLs and retry a limited number of times.
+        if (httpCode in listOf(403, 410, 416) && playbackRecoveryAttempts < 2) {
+            playbackRecoveryAttempts++
+            streamUriCache.clear()
             player.prepare()
             player.play()
             return
@@ -1068,7 +1073,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                 }
             },
             context = applicationContext,
-            cache = cache
+            cache = cache,
+            uriCache = streamUriCache
         ),
         /* extractorsFactory = */
         DefaultExtractorsFactory()
@@ -1370,32 +1376,33 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
             val mediaId = dataSpec.key?.removePrefix("https://youtube.com/watch?v=")
                 ?: error("A key must be set")
 
-            fun DataSpec.ranged(contentLength: Long?) = contentLength?.let {
-                if (chunkLength == null) return@let null
+            fun DataSpec.ranged(contentLength: Long?): DataSpec {
+                if (chunkLength == null || contentLength == null) return this
+                // Media3 generates HTTP Range headers from DataSpec.position and length.
+                val remaining = contentLength - position
+                if (remaining <= 0L) return this
+                val requested = length.takeIf { it > 0L } ?: chunkLength
+                return buildUpon().setLength(minOf(remaining, requested, chunkLength)).build()
+            }
 
-                val start = dataSpec.uriPositionOffset
-                val length = (contentLength - start).coerceAtMost(chunkLength)
-                val rangeText = "$start-${start + length}"
+            val cachedContentLength = ContentMetadata
+                .getContentLength(cache.getContentMetadata(mediaId))
+                .takeIf { it != C.LENGTH_UNSET.toLong() }
+                ?: uriCache[mediaId]?.meta
+            val remaining = cachedContentLength?.minus(dataSpec.position)
+            val requestedLength = dataSpec.length.takeIf { it > 0L } ?: chunkLength
+            val cachedLength = requestedLength?.let { size ->
+                remaining?.let { minOf(size, it) } ?: size
+            }
+            val isAlreadyCached = cachedLength != null && cachedLength > 0L &&
+                cache.isCached(mediaId, dataSpec.position, cachedLength)
 
-                this.subrange(start, length)
-                    .withAdditionalHeaders(mapOf("Range" to "bytes=$rangeText"))
-            } ?: this
-
-            if (
-                dataSpec.isLocal || (
-                    chunkLength != null && cache.isCached(
-                        /* key = */
-                        mediaId,
-                        /* position = */
-                        dataSpec.position,
-                        /* length = */
-                        chunkLength
-                    )
-                    )
-            ) {
+            if (dataSpec.isLocal || isAlreadyCached) {
                 dataSpec
             } else {
-                uriCache[mediaId]?.let { cachedUri ->
+                uriCache[mediaId]
+                    ?.takeIf { System.currentTimeMillis() - it.createdAtMillis < 15 * 60_000L }
+                    ?.let { cachedUri ->
                     dataSpec
                         .withUri(cachedUri.uri)
                         .ranged(cachedUri.meta)
@@ -1409,8 +1416,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                         Dependencies.runDownload(mediaId)
                     }.mapCatching {
                         YouTubeDLResponse.fromString(it)
-                    }.also { it.exceptionOrNull()?.printStackTrace() }.getOrNull()
-                    if (info?.id != mediaId) throw VideoIdMismatchException()
+                    }.getOrElse { throw UnplayableException(it) }
+                    if (info.id != mediaId) throw VideoIdMismatchException()
                     val format = info.formats?.firstOrNull { it.formatId == info.formatId }
 
                     val uri =
