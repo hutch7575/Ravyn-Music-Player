@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import app.vitune.android.LocalPlayerAwareWindowInsets
 import app.vitune.android.R
@@ -92,7 +93,7 @@ fun RavynSearchResults(
                                 params = Innertube.SearchFilter.Song.value),
                             fromMusicShelfRendererContent = Innertube.SongItem.Companion::from
                         ) else Innertube.searchPage(
-                            body = ContinuationBody(continuation),
+                            body = ContinuationBody(continuation = continuation),
                             fromMusicShelfRendererContent = Innertube.SongItem.Companion::from
                         )
                     },
@@ -111,7 +112,7 @@ fun RavynSearchResults(
                                 params = Innertube.SearchFilter.Album.value),
                             fromMusicShelfRendererContent = Innertube.AlbumItem::from
                         ) else Innertube.searchPage(
-                            body = ContinuationBody(continuation),
+                            body = ContinuationBody(continuation = continuation),
                             fromMusicShelfRendererContent = Innertube.AlbumItem::from
                         )
                     },
@@ -130,7 +131,7 @@ fun RavynSearchResults(
                                 params = Innertube.SearchFilter.Artist.value),
                             fromMusicShelfRendererContent = Innertube.ArtistItem::from
                         ) else Innertube.searchPage(
-                            body = ContinuationBody(continuation),
+                            body = ContinuationBody(continuation = continuation),
                             fromMusicShelfRendererContent = Innertube.ArtistItem::from
                         )
                     },
@@ -149,7 +150,7 @@ fun RavynSearchResults(
                                 params = Innertube.SearchFilter.Video.value),
                             fromMusicShelfRendererContent = Innertube.VideoItem::from
                         ) else Innertube.searchPage(
-                            body = ContinuationBody(continuation),
+                            body = ContinuationBody(continuation = continuation),
                             fromMusicShelfRendererContent = Innertube.VideoItem::from
                         )
                     },
@@ -168,7 +169,7 @@ fun RavynSearchResults(
                                 params = Innertube.SearchFilter.CommunityPlaylist.value),
                             fromMusicShelfRendererContent = Innertube.PlaylistItem::from
                         ) else Innertube.searchPage(
-                            body = ContinuationBody(continuation),
+                            body = ContinuationBody(continuation = continuation),
                             fromMusicShelfRendererContent = Innertube.PlaylistItem::from
                         )
                     },
