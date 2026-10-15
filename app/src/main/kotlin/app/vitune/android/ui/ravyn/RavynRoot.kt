@@ -405,7 +405,7 @@ private fun RavynLibrary(
                     val data = when (current) { 0 -> liked; 5 -> local; else -> songs }
                     val visible = if (reverse) data.reversed() else data
                     LazyColumn(contentPadding = PaddingValues(
-                        start = 18.dp, end = 18.dp, bottom = 30.dp)) {
+                        start = 18.dp, end = 18.dp, bottom = 105.dp)) {
                         item {
                             Spacer(Modifier.height(5.dp))
                             if (current == 0) RavynHero("Liked Songs",
@@ -438,7 +438,7 @@ private fun RavynLibrary(
                     }
                 }
                 1 -> LazyColumn(contentPadding = PaddingValues(
-                    start = 18.dp, end = 18.dp, bottom = 30.dp)) {
+                    start = 18.dp, end = 18.dp, bottom = 105.dp)) {
                     item {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RavynLabel("Your playlists", 25, bold = true,
@@ -465,7 +465,7 @@ private fun RavynLibrary(
                     }
                 }
                 2 -> LazyVerticalGrid(columns = GridCells.Adaptive(125.dp),
-                    contentPadding = PaddingValues(18.dp),
+                    contentPadding = PaddingValues(start = 18.dp, top = 18.dp, end = 18.dp, bottom = 105.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp)) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
@@ -482,7 +482,7 @@ private fun RavynLibrary(
                     }
                 }
                 else -> LazyVerticalGrid(columns = GridCells.Adaptive(145.dp),
-                    contentPadding = PaddingValues(18.dp),
+                    contentPadding = PaddingValues(start = 18.dp, top = 18.dp, end = 18.dp, bottom = 105.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     item(span = { GridItemSpan(maxLineSpan) }) {

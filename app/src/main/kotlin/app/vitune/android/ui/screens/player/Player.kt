@@ -183,6 +183,9 @@ fun Player(
         .only(WindowInsetsSides.Bottom)
         .asPaddingValues()
         .calculateBottomPadding()
+    val horizontalBottomPaddingValues = windowInsets
+        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+        .asPaddingValues()
 
     OnGlobalRoute { if (layoutState.expanded) layoutState.collapseSoft() }
 
