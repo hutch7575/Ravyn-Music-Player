@@ -377,7 +377,7 @@ fun Player(
             )
             .padding(bottom = playerBottomSheetState.collapsedBound)
 
-        var artworkAccent by remember(mediaItem?.mediaId) { mutableStateOf(Color(0xFF8B67CA)) }
+        var artworkAccent by remember(mediaItem?.mediaId) { mutableStateOf(colorPalette.accent) }
         val thumbnailContent: @Composable (modifier: Modifier) -> Unit = { innerModifier ->
             Pip(
                 numerator = 1,
@@ -577,8 +577,8 @@ fun Player(
         if (binder != null) Queue(
             layoutState = playerBottomSheetState,
             binder = binder,
-            collapsedBarColor = if (isLandscape) null else Color(0xFF17213E),
-            collapsedIconColor = if (isLandscape) null else Color.White,
+            collapsedBarColor = if (isLandscape) null else colorPalette.background1,
+            collapsedIconColor = if (isLandscape) null else colorPalette.accent,
             // Track repeat already has a working control in RavynNowPlaying.
             // The old infinity shortcut disabled itself when repeat was off.
             beforeContent = { Spacer(modifier = Modifier.width(20.dp)) },

@@ -179,7 +179,7 @@ fun HomePlaylists(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier
-                                .background(Color(0xFF7256CB), RoundedCornerShape(5.dp))
+                                .background(colorPalette.accent, RoundedCornerShape(5.dp))
                                 .clickable { isCreatingANewPlaylist = true }
                                 .padding(horizontal = 17.dp, vertical = 12.dp)
                         ) {

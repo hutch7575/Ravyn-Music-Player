@@ -112,6 +112,7 @@ fun RavynHomeNavigation(
                     ),
                     maxLines = 1,
                     modifier = Modifier.weight(1f)
+                        .clickable(enabled = showDrawer) { drawerOpen = true }
                 )
                 if (showDrawer) {
                     NavIcon(R.drawable.search, "Search", palette.text, onSettingsClick)

@@ -84,9 +84,9 @@ fun RavynNowPlaying(
         animationSpec = tween(380, easing = FastOutSlowInEasing),
         label = "Artwork theme"
     )
-    val accent = lerp(Color(0xFFB08CFF), animatedArtworkColor, 0.38f)
+    val accent = lerp(animatedArtworkColor, Color.White, 0.12f)
     val primaryText = Color.White
-    val secondaryText = Color(0xFFD4D4E9)
+    val secondaryText = Color(0xFFBFC4C8)
 
     // Reuse the loaded album cover's colour palette. No extra artwork image
     // and no costly real-time blur; only a few smoothly animated colours.
@@ -96,9 +96,9 @@ fun RavynNowPlaying(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        lerp(Color(0xFF1F2A44), animatedArtworkColor, 0.52f),
-                        lerp(Color(0xFF18213A), animatedArtworkColor, 0.19f),
-                        Color(0xFF111829)
+                        lerp(Color(0xFF141719), animatedArtworkColor, 0.38f),
+                        lerp(Color(0xFF111315), animatedArtworkColor, 0.13f),
+                        Color(0xFF0D0F11)
                     )
                 )
             )
@@ -123,6 +123,11 @@ fun RavynNowPlaying(
                 color = primaryText,
                 modifier = Modifier.size(48.dp)
             )
+            Spacer(Modifier.weight(1f))
+            BasicText("NOW PLAYING", style = TextStyle(
+                color = primaryText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.0.sp
+            ))
             Spacer(Modifier.weight(1f))
             RavynIcon(
                 icon = R.drawable.ellipsis_horizontal,
@@ -263,11 +268,7 @@ fun RavynNowPlaying(
                 modifier = Modifier
                     .size(if (compact) 64.dp else 72.dp)
                     .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(lerp(Color.White, accent, 0.78f), lerp(Color(0xFF6041C7), accent, 0.54f))
-                        )
-                    )
+                    .background(Color.White)
                     .clickable {
                         if (player != null) {
                             if (shouldBePlaying) player.pause()
@@ -290,7 +291,7 @@ fun RavynNowPlaying(
                     Image(
                         painter = painterResource(if (playing) R.drawable.pause else R.drawable.play),
                         contentDescription = if (playing) "Pause" else "Play",
-                        colorFilter = ColorFilter.tint(Color.White),
+                        colorFilter = ColorFilter.tint(Color(0xFF111315)),
                         modifier = Modifier.size(30.dp)
                     )
                 }
@@ -315,15 +316,12 @@ fun RavynNowPlaying(
 
         Spacer(Modifier.height(if (compact) 10.dp else 19.dp))
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(38.dp)
+        Column(
+            verticalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 10.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            RavynTextAction("LYRICS", onShowLyrics)
-            RavynTextAction("UP NEXT", onShowQueue)
+            RavynTextAction("LYRICS", R.drawable.musical_notes, accent, true, onShowLyrics)
+            RavynTextAction("UP NEXT", R.drawable.enqueue, accent, false, onShowQueue)
         }
 
         Spacer(Modifier.height(if (compact) 6.dp else 12.dp))
@@ -357,23 +355,43 @@ private fun RavynIcon(
 }
 
 @Composable
-private fun RavynTextAction(text: String, onClick: () -> Unit) {
-    Box(
-        contentAlignment = Alignment.Center,
+private fun RavynTextAction(
+    text: String,
+    @DrawableRes icon: Int,
+    accent: Color,
+    highlighted: Boolean,
+    onClick: () -> Unit
+) {
+    val fill by animateColorAsState(
+        if (highlighted) accent.copy(alpha = 0.16f) else Color(0xFF1B1F22),
+        animationSpec = tween(320), label = "Action card"
+    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .clip(RoundedCornerShape(18.dp))
+            .fillMaxWidth()
+            .height(54.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(fill)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 9.dp)
+            .padding(horizontal = 18.dp)
     ) {
-        BasicText(
-            text = text,
-            style = TextStyle(
-                color = Color(0xFFD7CEE9),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.2.sp
-            )
+        Image(
+            painterResource(icon), contentDescription = null,
+            colorFilter = ColorFilter.tint(if (highlighted) accent else Color.White),
+            modifier = Modifier.size(21.dp)
         )
+        androidx.compose.foundation.layout.Spacer(Modifier.size(15.dp))
+        BasicText(
+            text, style = TextStyle(
+                color = Color.White, fontSize = 12.sp,
+                fontWeight = FontWeight.Medium, letterSpacing = 0.5.sp
+            ),
+            modifier = Modifier.weight(1f)
+        )
+        Image(painterResource(R.drawable.chevron_forward), contentDescription = null,
+            colorFilter = ColorFilter.tint(if (highlighted) accent else Color(0xFFABB0B4)),
+            modifier = Modifier.size(18.dp))
     }
 }
 
