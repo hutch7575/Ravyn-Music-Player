@@ -12,7 +12,7 @@ import app.vitune.core.ui.ThumbnailRoundness
 object AppearancePreferences : GlobalPreferencesHolder() {
     var colorSource by enum(
         when (OldPreferences.oldColorPaletteName) {
-            ColorPaletteName.Default, ColorPaletteName.PureBlack -> ColorSource.Default
+            ColorPaletteName.Default, ColorPaletteName.PureBlack -> ColorSource.Dynamic
             ColorPaletteName.Dynamic, ColorPaletteName.AMOLED -> ColorSource.Dynamic
             ColorPaletteName.MaterialYou -> ColorSource.MaterialYou
         }

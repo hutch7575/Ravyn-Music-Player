@@ -12,6 +12,8 @@ import app.vitune.android.ui.screens.albumRoute
 import app.vitune.android.ui.screens.artistRoute
 import app.vitune.android.ui.screens.builtInPlaylistRoute
 import app.vitune.android.ui.screens.builtinplaylist.BuiltInPlaylistScreen
+import app.vitune.android.ui.screens.builtinplaylist.BuiltInPlaylistSongs
+import app.vitune.core.data.enums.BuiltInPlaylist
 import app.vitune.android.ui.screens.localPlaylistRoute
 import app.vitune.android.ui.screens.localplaylist.LocalPlaylistScreen
 import app.vitune.android.ui.screens.mood.MoodScreen
@@ -75,6 +77,7 @@ fun HomeScreen() {
                     tab(4, R.string.artists, R.drawable.person)
                     tab(5, R.string.albums, R.drawable.disc)
                     tab(6, R.string.local, R.drawable.download)
+                    tab(7, "Liked Songs", R.drawable.heart)
                 }
             ) { currentTabIndex ->
                 saveableStateHolder.SaveableStateProvider(key = currentTabIndex) {
@@ -133,6 +136,8 @@ fun HomeScreen() {
                         6 -> HomeLocalSongs(
                             onSearchClick = onSearchClick
                         )
+
+                        7 -> BuiltInPlaylistSongs(builtInPlaylist = BuiltInPlaylist.Favorites)
                     }
                 }
             }
