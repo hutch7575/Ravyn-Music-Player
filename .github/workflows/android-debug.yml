@@ -5,6 +5,7 @@ on:
       - fix/playback-and-import-safety
       - feat/settings-and-in-app-updates
       - feat/ravyn-now-playing
+      - fix/playback-and-ui-smoothness
       - master
   workflow_dispatch:
 

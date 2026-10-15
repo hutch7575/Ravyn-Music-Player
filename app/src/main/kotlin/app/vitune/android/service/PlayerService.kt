@@ -286,9 +286,9 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
         bitmapProvider = BitmapProvider(
             getBitmapSize = {
-                (512 * resources.displayMetrics.density)
-                    .roundToInt()
-                    .coerceAtMost(AppearancePreferences.maxThumbnailSize)
+                // Notification/lock-screen artwork doesn't need a 1536px
+                // decode on 3x density phones for every song transition.
+                512.coerceAtMost(AppearancePreferences.maxThumbnailSize)
             },
             getColor = { isSystemInDarkMode ->
                 if (isSystemInDarkMode) Color.BLACK else Color.WHITE

@@ -1,6 +1,7 @@
 package app.vitune.android.ui.components.themed
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.using
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -59,7 +60,7 @@ fun Scaffold(
             transitionSpec = {
                 (fadeIn(tween(155, easing = FastOutSlowInEasing)))
                     .togetherWith(fadeOut(tween(90)))
-                    .using(androidx.compose.animation.SizeTransform(clip = false, sizeAnimationSpec = { _, _ -> androidx.compose.animation.core.snap() }))
+                    .using(null)
             },
             content = content,
             label = ""

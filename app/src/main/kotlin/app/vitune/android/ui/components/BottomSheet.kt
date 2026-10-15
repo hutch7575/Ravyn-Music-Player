@@ -3,6 +3,7 @@ package app.vitune.android.ui.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Indication
@@ -151,22 +152,22 @@ internal constructor(
 
     private fun deferAnimateTo(
         newValue: Dp,
-        spec: AnimationSpec<Dp> = spring()
+        spec: AnimationSpec<Dp> = tween(220, easing = FastOutSlowInEasing)
     ) = coroutineScope.launch {
         animatable.animateTo(newValue, spec)
     }
 
-    private fun collapse(spec: AnimationSpec<Dp> = spring()) {
+    private fun collapse(spec: AnimationSpec<Dp> = tween(220, easing = FastOutSlowInEasing)) {
         onAnchorChanged(Anchor.Collapsed)
         deferAnimateTo(collapsedBound, spec)
     }
 
-    private fun expand(spec: AnimationSpec<Dp> = spring()) {
+    private fun expand(spec: AnimationSpec<Dp> = tween(220, easing = FastOutSlowInEasing)) {
         onAnchorChanged(Anchor.Expanded)
         deferAnimateTo(expandedBound, spec)
     }
 
-    private fun dismiss(spec: AnimationSpec<Dp> = spring()) {
+    private fun dismiss(spec: AnimationSpec<Dp> = tween(220, easing = FastOutSlowInEasing)) {
         onAnchorChanged(Anchor.Dismissed)
         deferAnimateTo(dismissedBound, spec)
     }
@@ -175,9 +176,9 @@ internal constructor(
         snapTo(expandedBound - progress * (expandedBound - collapsedBound))
     }
 
-    fun collapseSoft() = collapse(tween(300))
-    fun expandSoft() = expand(tween(300))
-    fun dismissSoft() = dismiss(tween(300))
+    fun collapseSoft() = collapse(tween(220, easing = FastOutSlowInEasing))
+    fun expandSoft() = expand(tween(220, easing = FastOutSlowInEasing))
+    fun dismissSoft() = dismiss(tween(220, easing = FastOutSlowInEasing))
 
     fun snapTo(value: Dp) = coroutineScope.launch {
         animatable.snapTo(value)
