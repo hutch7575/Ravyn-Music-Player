@@ -70,7 +70,12 @@ fun Scaffold(
             pageTitle = when (key) {
                 "settings" -> "Settings"
                 "home" -> "Ravyn"
-                else -> "Search"
+                "search" -> "Search"
+                "searchresult" -> "Results"
+                "album" -> "Album"
+                "artist" -> "Artist"
+                "localplaylist", "pipedplaylist", "playlist" -> "Playlist"
+                else -> "Your music"
             },
             content = tabContent
         )
