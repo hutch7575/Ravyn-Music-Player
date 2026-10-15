@@ -7,6 +7,7 @@ on:
       - feat/ravyn-now-playing
       - fix/playback-and-ui-smoothness
       - feat/2016-navigation-playlists-player
+      - feat/ravyn-dark-album-ui
       - master
   workflow_dispatch:
 

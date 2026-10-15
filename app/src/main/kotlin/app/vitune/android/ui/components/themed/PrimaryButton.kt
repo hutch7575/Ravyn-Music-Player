@@ -28,15 +28,15 @@ fun PrimaryButton(
 
     Box(
         modifier = modifier
-            .clip(16.dp.roundedShape)
+            .clip(12.dp.roundedShape)
             .clickable(enabled = enabled, onClick = onClick)
-            .background(colorPalette.surface)
+            .background(colorPalette.accent)
             .size(62.dp)
     ) {
         Image(
             painter = painterResource(icon),
             contentDescription = null,
-            colorFilter = ColorFilter.tint(colorPalette.text),
+            colorFilter = ColorFilter.tint(colorPalette.onAccent),
             modifier = Modifier
                 .align(Alignment.Center)
                 .size(20.dp)

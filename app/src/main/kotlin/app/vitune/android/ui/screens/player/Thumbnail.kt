@@ -222,7 +222,7 @@ fun Thumbnail(
                                 val rgb = palette.vibrantSwatch?.rgb
                                     ?: palette.mutedSwatch?.rgb
                                     ?: palette.dominantSwatch?.rgb
-                                    ?: 0xFF8B67CA.toInt()
+                                    ?: 0xFF8FA0AF.toInt()
                                 Color(rgb)
                             }.getOrNull()
                         }

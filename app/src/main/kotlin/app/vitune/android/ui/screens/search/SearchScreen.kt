@@ -58,14 +58,14 @@ fun SearchScreen(
                 Box {
                     AnimatedVisibility(
                         visible = textFieldValue.text.isEmpty(),
-                        enter = fadeIn(tween(300)),
-                        exit = fadeOut(tween(300)),
-                        modifier = Modifier.align(Alignment.CenterEnd)
+                        enter = fadeIn(tween(140)),
+                        exit = fadeOut(tween(120)),
+                        modifier = Modifier.align(Alignment.CenterStart)
                     ) {
                         BasicText(
                             text = stringResource(R.string.search_placeholder),
                             maxLines = 1,
-                            style = LocalAppearance.current.typography.xxl.secondary
+                            style = LocalAppearance.current.typography.s.secondary
                         )
                     }
 

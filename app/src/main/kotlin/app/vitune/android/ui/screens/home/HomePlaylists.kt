@@ -60,6 +60,7 @@ import app.vitune.android.ui.components.themed.FloatingActionsContainerWithScrol
 import app.vitune.android.ui.components.themed.Header
 import app.vitune.android.ui.components.themed.HeaderIconButton
 import app.vitune.android.ui.components.themed.SecondaryTextButton
+import app.vitune.android.ui.components.themed.RavynSortChip
 import app.vitune.android.ui.components.themed.TextFieldDialog
 import app.vitune.android.ui.components.themed.VerticalDivider
 import app.vitune.android.ui.items.PlaylistItem
@@ -134,7 +135,7 @@ fun HomePlaylists(
         LazyVerticalGrid(
             state = lazyGridState,
             columns = if (UIStatePreferences.playlistsAsGrid)
-                GridCells.Adaptive(152.dp)
+                GridCells.Adaptive(162.dp)
             else GridCells.Fixed(1),
             contentPadding = LocalPlayerAwareWindowInsets.current
                 .only(WindowInsetsSides.Vertical + WindowInsetsSides.End)
@@ -178,7 +179,7 @@ fun HomePlaylists(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier
-                                .background(Color(0xFF7256CB), RoundedCornerShape(5.dp))
+                                .background(colorPalette.accent, RoundedCornerShape(5.dp))
                                 .clickable { isCreatingANewPlaylist = true }
                                 .padding(horizontal = 17.dp, vertical = 12.dp)
                         ) {
@@ -227,13 +228,13 @@ fun HomePlaylists(
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState())
                     ) {
-                        PlaylistSortChip("RECENT", playlistSortBy == PlaylistSortBy.DateAdded) {
+                        RavynSortChip("RECENT", playlistSortBy == PlaylistSortBy.DateAdded) {
                             playlistSortBy = PlaylistSortBy.DateAdded
                         }
-                        PlaylistSortChip("NAME", playlistSortBy == PlaylistSortBy.Name) {
+                        RavynSortChip("NAME", playlistSortBy == PlaylistSortBy.Name) {
                             playlistSortBy = PlaylistSortBy.Name
                         }
-                        PlaylistSortChip("SONGS", playlistSortBy == PlaylistSortBy.SongCount) {
+                        RavynSortChip("SONGS", playlistSortBy == PlaylistSortBy.SongCount) {
                             playlistSortBy = PlaylistSortBy.SongCount
                         }
                         Box(
@@ -264,7 +265,7 @@ fun HomePlaylists(
                     colorTint = colorPalette.red,
                     name = stringResource(R.string.favorites),
                     songCount = null,
-                    thumbnailSize = Dimensions.thumbnails.playlist,
+                    thumbnailSize = 126.dp,
                     alternative = UIStatePreferences.playlistsAsGrid,
                     modifier = Modifier
                         .clickable { onBuiltInPlaylist(BuiltInPlaylist.Favorites) }
@@ -372,31 +373,3 @@ fun HomePlaylists(
     }
 }
 
-@Composable
-private fun PlaylistSortChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val (colors) = LocalAppearance.current
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .background(
-                if (selected) Color(0xFF7256CB) else colors.background1,
-                RoundedCornerShape(5.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 9.dp)
-    ) {
-        BasicText(
-            text = label,
-            style = TextStyle(
-                color = if (selected) Color.White else colors.textSecondary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.5.sp
-            )
-        )
-    }
-}

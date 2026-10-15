@@ -1,6 +1,7 @@
 package app.vitune.android.ui.items
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -71,6 +72,7 @@ fun AlbumItem(
 ) {
     val typography = LocalAppearance.current.typography
     val thumbnailShape = LocalAppearance.current.thumbnailShape
+    val colors = LocalAppearance.current.colorPalette
 
     AsyncImage(
         model = thumbnailUrl?.thumbnail(thumbnailSize.px),
@@ -78,6 +80,7 @@ fun AlbumItem(
         contentScale = ContentScale.Crop,
         modifier = Modifier
             .clip(thumbnailShape)
+            .background(colors.background2)
             .size(thumbnailSize)
     )
 
@@ -91,11 +94,11 @@ fun AlbumItem(
             )
         }
 
-        if (!alternative) authors?.let {
+        authors?.let {
             BasicText(
                 text = authors,
                 style = typography.xs.semiBold.secondary,
-                maxLines = 2,
+                maxLines = if (alternative) 1 else 2,
                 overflow = TextOverflow.Ellipsis
             )
         }

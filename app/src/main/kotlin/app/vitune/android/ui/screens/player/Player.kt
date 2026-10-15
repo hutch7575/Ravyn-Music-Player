@@ -211,14 +211,17 @@ fun Player(
                     .clip(shape)
                     .background(colorPalette.background1)
                     .drawBehind {
+                        // Classic two-pixel progress line. The previous design
+                        // repainted the entire mini-player background as time
+                        // advanced, making the layout visually noisy.
                         drawRect(
-                            color = colorPalette.collapsedPlayerProgressBar,
-                            topLeft = Offset.Zero,
+                            color = colorPalette.accent,
+                            topLeft = Offset(0f, 0f),
                             size = Size(
-                                width = runCatching {
-                                    size.width * (position.toFloat() / duration.absoluteValue)
-                                }.getOrElse { 0f },
-                                height = size.height
+                                width = if (duration > 0L)
+                                    (size.width * (position.toFloat() / duration)).coerceIn(0f, size.width)
+                                else 0f,
+                                height = 2.dp.toPx()
                             )
                         )
                     }
@@ -374,7 +377,7 @@ fun Player(
             )
             .padding(bottom = playerBottomSheetState.collapsedBound)
 
-        var artworkAccent by remember(mediaItem?.mediaId) { mutableStateOf(Color(0xFF8B67CA)) }
+        var artworkAccent by remember(mediaItem?.mediaId) { mutableStateOf(colorPalette.accent) }
         val thumbnailContent: @Composable (modifier: Modifier) -> Unit = { innerModifier ->
             Pip(
                 numerator = 1,
@@ -574,8 +577,8 @@ fun Player(
         if (binder != null) Queue(
             layoutState = playerBottomSheetState,
             binder = binder,
-            collapsedBarColor = if (isLandscape) null else Color(0xFF17213E),
-            collapsedIconColor = if (isLandscape) null else Color.White,
+            collapsedBarColor = if (isLandscape) null else colorPalette.background1,
+            collapsedIconColor = if (isLandscape) null else colorPalette.accent,
             // Track repeat already has a working control in RavynNowPlaying.
             // The old infinity shortcut disabled itself when repeat was off.
             beforeContent = { Spacer(modifier = Modifier.width(20.dp)) },

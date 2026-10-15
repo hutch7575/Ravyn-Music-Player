@@ -1,6 +1,11 @@
 package app.vitune.android.ui.screens.search
 
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -83,12 +88,16 @@ fun LocalSongSearch(
                         BasicTextField(
                             value = textFieldValue,
                             onValueChange = onTextFieldValueChange,
-                            textStyle = typography.xxl.medium.align(TextAlign.End),
+                            textStyle = typography.m.medium.align(TextAlign.Start),
                             singleLine = true,
                             maxLines = 1,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                             cursorBrush = SolidColor(colorPalette.text),
-                            decorationBox = decorationBox
+                            decorationBox = decorationBox,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(colorPalette.background1, RoundedCornerShape(9.dp))
+                                .padding(horizontal = 15.dp, vertical = 12.dp)
                         )
                     },
                     actionsContent = {
