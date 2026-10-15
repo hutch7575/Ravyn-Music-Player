@@ -168,11 +168,39 @@ fun QuickPicks(
                 )
         ) {
             Header(
-                title = stringResource(R.string.quick_picks),
+                title = "Listen again",
                 modifier = Modifier.padding(endPaddingValues)
             )
 
             relatedPageResult?.getOrNull()?.let { related ->
+                related.albums?.let { albums ->
+                    BasicText(
+                        text = "Albums for you",
+                        style = typography.m.semiBold,
+                        modifier = sectionTextModifier
+                    )
+
+                    LazyRow(contentPadding = endPaddingValues) {
+                        items(
+                            items = albums,
+                            key = Innertube.AlbumItem::key
+                        ) { album ->
+                            AlbumItem(
+                                album = album,
+                                thumbnailSize = Dimensions.thumbnails.album,
+                                alternative = true,
+                                modifier = Modifier.clickable { onAlbumClick(album) }
+                            )
+                        }
+                    }
+                }
+
+                BasicText(
+                    text = "Made for you",
+                    style = typography.m.semiBold,
+                    modifier = sectionTextModifier
+                )
+
                 LazyHorizontalGrid(
                     state = quickPicksLazyGridState,
                     rows = GridCells.Fixed(4),
@@ -209,7 +237,6 @@ fun QuickPicks(
                                             )
                                         }
                                     )
-                                    .animateItem(fadeInSpec = null, fadeOutSpec = null)
                                     .width(itemInHorizontalGridWidth),
                                 song = song,
                                 thumbnailSize = Dimensions.thumbnails.song,
@@ -254,7 +281,6 @@ fun QuickPicks(
                                         )
                                     }
                                 )
-                                .animateItem(fadeInSpec = null, fadeOutSpec = null)
                                 .width(itemInHorizontalGridWidth),
                             showDuration = false,
                             isPlaying = playing && currentMediaId == song.key
@@ -262,31 +288,9 @@ fun QuickPicks(
                     }
                 }
 
-                related.albums?.let { albums ->
-                    BasicText(
-                        text = stringResource(R.string.related_albums),
-                        style = typography.m.semiBold,
-                        modifier = sectionTextModifier
-                    )
-
-                    LazyRow(contentPadding = endPaddingValues) {
-                        items(
-                            items = albums,
-                            key = Innertube.AlbumItem::key
-                        ) { album ->
-                            AlbumItem(
-                                album = album,
-                                thumbnailSize = Dimensions.thumbnails.album,
-                                alternative = true,
-                                modifier = Modifier.clickable { onAlbumClick(album) }
-                            )
-                        }
-                    }
-                }
-
                 related.artists?.let { artists ->
                     BasicText(
-                        text = stringResource(R.string.similar_artists),
+                        text = "Artists to explore",
                         style = typography.m.semiBold,
                         modifier = sectionTextModifier
                     )

@@ -123,8 +123,8 @@ fun Queue(
     afterContent: @Composable RowScope.() -> Unit,
     modifier: Modifier = Modifier,
     shape: RoundedCornerShape = RoundedCornerShape(
-        topStart = 12.dp,
-        topEnd = 12.dp
+        topStart = 16.dp,
+        topEnd = 16.dp
     ),
     collapsedBarColor: Color? = null,
     collapsedIconColor: Color? = null,
@@ -262,7 +262,7 @@ fun Queue(
             Box(
                 modifier = Modifier
                     .clip(shape)
-                    .background(colorPalette.background1)
+                    .background(colorPalette.background0)
                     .weight(1f)
             ) {
                 LookaheadScope {

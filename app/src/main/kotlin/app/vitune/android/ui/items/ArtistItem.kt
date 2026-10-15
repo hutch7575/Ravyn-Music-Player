@@ -1,6 +1,7 @@
 package app.vitune.android.ui.items
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
@@ -69,13 +70,14 @@ fun ArtistItem(
     horizontalAlignment = Alignment.CenterHorizontally,
     modifier = Modifier.clip(LocalAppearance.current.thumbnailShape) then modifier
 ) {
-    val [_, typography] = LocalAppearance.current
+    val [palette, typography] = LocalAppearance.current
 
     AsyncImage(
         model = thumbnailUrl?.thumbnail(thumbnailSize.px),
         contentDescription = null,
         modifier = Modifier
             .clip(CircleShape)
+            .background(palette.background2)
             .requiredSize(thumbnailSize)
     )
 
