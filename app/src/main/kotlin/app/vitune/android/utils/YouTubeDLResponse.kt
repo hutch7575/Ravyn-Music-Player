@@ -12,7 +12,9 @@ data class YouTubeDLResponse(
     val url: String? = null,
     val formats: List<Format>? = null,
     @SerialName("filesize")
-    val fileSize: Long
+    val fileSize: Long? = null,
+    @SerialName("filesize_approx")
+    val approximateFileSize: Long? = null
 ) {
     companion object {
         val json = Json {
