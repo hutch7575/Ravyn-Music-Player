@@ -238,6 +238,7 @@ fun About() = SettingsCategoryScreen(
         LaunchedEffect(Unit) {
             newest = withContext(Dispatchers.IO) {
                 VERSION_NAME.version.getNewerVersion()
+                    ?: Result.failure(IllegalStateException("Could not reach GitHub"))
             }
         }
 
