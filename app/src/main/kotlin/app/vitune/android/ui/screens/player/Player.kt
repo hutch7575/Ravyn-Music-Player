@@ -48,6 +48,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -563,10 +564,13 @@ fun Player(
         if (binder != null) Queue(
             layoutState = playerBottomSheetState,
             binder = binder,
+            collapsedBarColor = if (isLandscape) null else Color(0xFF17213E),
+            collapsedIconColor = if (isLandscape) null else Color.White,
             beforeContent = {
                 if (playerLayout == PlayerPreferences.PlayerLayout.New) IconButton(
                     onClick = { trackLoopEnabled = !trackLoopEnabled },
                     icon = R.drawable.infinite,
+                    color = if (isLandscape) colorPalette.text else Color.White,
                     enabled = trackLoopEnabled,
                     modifier = Modifier
                         .padding(vertical = 8.dp)
@@ -576,7 +580,7 @@ fun Player(
             afterContent = {
                 IconButton(
                     icon = R.drawable.ellipsis_horizontal,
-                    color = colorPalette.text,
+                    color = if (isLandscape) colorPalette.text else Color.White,
                     onClick = {
                         mediaItem?.let {
                             menuState.display {
