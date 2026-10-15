@@ -1336,7 +1336,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
     companion object {
         private const val DEFAULT_CACHE_DIRECTORY = "exoplayer"
-        private const val DEFAULT_CHUNK_LENGTH = 512 * 1024L
+        private const val DEFAULT_CHUNK_LENGTH = 1024 * 1024L
 
         fun createDatabaseProvider(context: Context) = StandaloneDatabaseProvider(context)
         fun createCache(
@@ -1424,21 +1424,19 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                     }.getOrNull()
 
                     val extras = mediaItem?.mediaMetadata?.extras?.songBundle
-                    if (extras?.durationText == null) {
-                        info.duration
-                            ?.toLong()
-                            ?.takeIf { it > 0L }
-                            ?.let(DateUtils::formatElapsedTime)
-                            ?.removePrefix("0")
-                            ?.let { durationText ->
-                                extras?.durationText = durationText
-                                Database.updateDurationText(mediaId, durationText)
-                            }
-                    }
+                    val durationText = info.duration
+                        ?.toLong()
+                        ?.takeIf { it > 0L && extras?.durationText == null }
+                        ?.let(DateUtils::formatElapsedTime)
+                        ?.removePrefix("0")
+                    durationText?.let { extras?.durationText = it }
 
+                    // Database writes are queued, never performed on the Media3
+                    // loader thread that is waiting to receive the audio URL.
                     transaction {
                         runCatching {
                             mediaItem?.let(Database::insert)
+                            durationText?.let { Database.updateDurationText(mediaId, it) }
                             Database.upsertStreamFormat(
                                 songId = mediaId,
                                 itag = info.formatId?.toIntOrNull(),
