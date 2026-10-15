@@ -1,6 +1,13 @@
 package app.vitune.android.ui.screens.player
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,7 +28,6 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -42,7 +48,6 @@ import app.vitune.android.service.PlayerService
 import app.vitune.android.ui.components.SeekBar
 import app.vitune.android.utils.forceSeekToNext
 import app.vitune.android.utils.forceSeekToPrevious
-import coil3.compose.AsyncImage
 
 /**
  * Ravyn's classic Material-inspired now-playing view.
@@ -51,7 +56,6 @@ import coil3.compose.AsyncImage
  */
 @Composable
 fun RavynNowPlaying(
-    artwork: Any?,
     media: UiMedia?,
     binder: PlayerService.Binder?,
     title: String,
@@ -74,32 +78,21 @@ fun RavynNowPlaying(
     val primaryText = Color.White
     val secondaryText = Color(0xFFD4D4E9)
 
-    // Use the actual playing track's artwork rather than an invented gradient.
+    // A cheap, stable Material-era backdrop: no full-screen image decoding or
+    // 56dp blur pass on each playback update. The actual cover stays in the thumbnail.
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF121A37))
-    ) {
-        AsyncImage(
-            model = artwork,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .blur(56.dp)
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color(0xCE161E46),
-                        0.48f to Color(0xA6161833),
-                        1f to Color(0xE4071733)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF26345B),
+                        Color(0xFF192341),
+                        Color(0xFF111829)
                     )
                 )
-        )
-    }
+            )
+    )
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -118,24 +111,15 @@ fun RavynNowPlaying(
                 description = "Close player",
                 onClick = onCollapse,
                 color = primaryText,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.size(48.dp)
             )
-            BasicText(
-                text = "Ravyn",
-                style = TextStyle(
-                    color = primaryText,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.6).sp
-                )
-            )
+            Spacer(Modifier.weight(1f))
             RavynIcon(
                 icon = R.drawable.ellipsis_horizontal,
                 description = "More options",
                 onClick = onMore,
                 color = primaryText,
-                modifier = Modifier.weight(1f),
-                alignEnd = true
+                modifier = Modifier.size(48.dp)
             )
         }
 
@@ -266,12 +250,22 @@ fun RavynNowPlaying(
                         }
                     }
             ) {
-                Image(
-                    painter = painterResource(if (shouldBePlaying) R.drawable.pause else R.drawable.play),
-                    contentDescription = if (shouldBePlaying) "Pause" else "Play",
-                    colorFilter = ColorFilter.tint(Color.White),
-                    modifier = Modifier.size(30.dp)
-                )
+                AnimatedContent(
+                    targetState = shouldBePlaying,
+                    transitionSpec = {
+                        (fadeIn(tween(170, easing = FastOutSlowInEasing)) +
+                            scaleIn(initialScale = 0.88f, animationSpec = tween(170)))
+                            .togetherWith(fadeOut(tween(100)))
+                    },
+                    label = "Play/pause"
+                ) { playing ->
+                    Image(
+                        painter = painterResource(if (playing) R.drawable.pause else R.drawable.play),
+                        contentDescription = if (playing) "Pause" else "Play",
+                        colorFilter = ColorFilter.tint(Color.White),
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
             }
             RavynIcon(
                 icon = R.drawable.play_skip_forward,
