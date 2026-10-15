@@ -1,8 +1,7 @@
 name: Signed Ravyn release
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -13,6 +12,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
       - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:

@@ -6,7 +6,7 @@ Ravyn focuses on a familiar music-library experience, fast playback, playlists, 
 
 ## Downloads
 
-Install the **signed universal APK** from [GitHub Releases](https://github.com/hutch7575/Ravyn/releases) once the first release is published. Do not install debug artifacts as production releases.
+Install the **signed universal APK** from [GitHub Releases](https://github.com/hutch7575/Ravyn-Music-Player/releases) once the first release is published. Do not install debug artifacts as production releases.
 
 ## Development
 

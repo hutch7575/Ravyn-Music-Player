@@ -65,7 +65,7 @@ import kotlin.time.toJavaDuration
 
 private val VERSION_NAME = BuildConfig.VERSION_NAME.substringBeforeLast("-")
 private const val REPO_OWNER = "hutch7575"
-private const val REPO_NAME = "Ravyn"
+private const val REPO_NAME = "Ravyn-Music-Player"
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 private val permission = Manifest.permission.POST_NOTIFICATIONS

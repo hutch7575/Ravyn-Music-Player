@@ -43,7 +43,7 @@ object AppUpdateInstaller {
                 require(source.protocol == "https" && source.host == "github.com") {
                     "Updates must come from the official Ravyn GitHub releases"
                 }
-                require(source.path.startsWith("/hutch7575/Ravyn/releases/download/")) {
+                require(source.path.startsWith("/hutch7575/Ravyn-Music-Player/releases/download/")) {
                     "Unrecognized update source"
                 }
 

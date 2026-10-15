@@ -1,10 +1,10 @@
 # Publishing Ravyn APK releases
 
-Ravyn checks [GitHub Releases](https://github.com/hutch7575/Ravyn/releases) for newer versions and can download a **signed universal APK** from within the app. Android asks users to approve installation and enforces update signing compatibility.
+Ravyn checks [GitHub Releases](https://github.com/hutch7575/Ravyn-Music-Player/releases) for newer versions and can download a **signed universal APK** from within the app. Android asks users to approve installation and enforces update signing compatibility.
 
 ## Before the first release
 
-1. Rename this repository to **Ravyn** in **Settings → General → Repository name**. The update checker and installer expect `hutch7575/Ravyn`; do not publish while the repository still has the previous name.
+1. Confirm this repository is named **Ravyn-Music-Player**. The update checker and installer expect `hutch7575/Ravyn-Music-Player`.
 2. Create a permanent Android release signing keystore on a trusted computer. **Keep an offline copy** of the file, alias and passwords. If you lose it, Android cannot install future updates over existing releases.
 3. Add these GitHub Actions repository secrets in **Settings → Secrets and variables → Actions**:
    - `ANDROID_RELEASE_KEYSTORE_BASE64`: base64 encoding of the complete keystore
@@ -24,16 +24,14 @@ On Windows PowerShell, obtain base64 with `[Convert]::ToBase64String([IO.File]::
 
 ## Publishing
 
-Merge the tested changes to `master`, then create and push a version tag:
+Merge the tested changes to `master`. In **GitHub → Releases → Draft a new release**:
 
-```bash
-git checkout master
-git pull
-git tag v1.0.0
-git push origin v1.0.0
-```
+1. Select **Choose a tag → v1.0.0 → Create new tag on publish**, targeting `master`.
+2. Enter title **Ravyn v1.0.0** and describe the release.
+3. Click **Publish release**. Publishing starts the [release workflow](../.github/workflows/android-release.yml), which builds a signed **universal** APK and attaches it to that release as `Ravyn-v1.0.0.apk` after it succeeds.
+4. Wait for the workflow to complete successfully before distributing the APK. If signing secrets are missing, the workflow fails and no APK will be attached; configure the secrets and rerun the failed job from GitHub Actions.
 
-The [release workflow](../.github/workflows/android-release.yml) builds a release-signed **universal** APK and creates a public GitHub Release with the asset named `Ravyn-v1.0.0.apk`. The in-app updater only selects production APK assets, not debug/nightly artifacts.
+The in-app updater only selects production APK assets, not debug/nightly artifacts.
 
 Use a new semantic version for every subsequent release. The workflow derives `versionCode` from `MAJOR.MINOR.PATCH`; never reuse a tag.
 
