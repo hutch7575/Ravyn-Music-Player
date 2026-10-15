@@ -65,7 +65,8 @@ fun RavynSearchPage(
     initialQuery: String,
     onBack: () -> Unit,
     onSubmit: (String) -> Unit,
-    onPlaylistUrl: (String) -> Unit
+    onPlaylistUrl: (String) -> Unit,
+    embedded: Boolean = false
 ) {
     val binder = LocalPlayerServiceBinder.current
     val accent = ravynAccent()
@@ -109,11 +110,14 @@ fun RavynSearchPage(
         .only(WindowInsetsSides.Vertical).asPaddingValues()
     Column(
         Modifier.fillMaxSize().background(RavynStyle.background)
-            .padding(top = insets.calculateTopPadding(), bottom = insets.calculateBottomPadding())
+            .padding(
+                top = if (embedded) 0.dp else insets.calculateTopPadding(),
+                bottom = if (embedded) 0.dp else insets.calculateBottomPadding()
+            )
     ) {
         Row(verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(start = 6.dp, end = 18.dp, top = 9.dp)) {
-            RavynIcon(R.drawable.chevron_back, "Back", onBack)
+            if (!embedded) RavynIcon(R.drawable.chevron_back, "Back", onBack)
             BasicTextField(
                 value = query,
                 onValueChange = { query = it },

@@ -1,6 +1,18 @@
 package app.vitune.android.ui.screens.home
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
+import app.vitune.android.Database
+import app.vitune.android.LocalPlayerServiceBinder
+import app.vitune.android.R
+import app.vitune.android.handleUrl
+import app.vitune.android.models.SearchQuery
+import app.vitune.android.preferences.DataPreferences
+import app.vitune.android.query
+import app.vitune.android.ui.ravyn.LocalRavynNavigation
+import app.vitune.android.ui.screens.searchResultRoute
+import app.vitune.android.utils.toast
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import app.vitune.android.R
 import app.vitune.android.models.toUiMood
@@ -38,7 +50,16 @@ fun HomeScreen() {
 
     PersistMapCleanup("home/")
 
+    val navigation = LocalRavynNavigation.current
+    val context = LocalContext.current
+    val binder = LocalPlayerServiceBinder.current
     RouteHandler {
+        navigation.navigate = { tab ->
+            navigation.destination.intValue = tab
+            // Dismiss an open search-result/album/settings route, not only the
+            // hidden Home tab underneath it.
+            replace(null)
+        }
         GlobalRoutes()
 
         localPlaylistRoute { playlistId ->
@@ -63,10 +84,21 @@ fun HomeScreen() {
 
         Content {
             RavynRoot(
-                onSearch = { searchRoute("") },
+                onSearchSubmit = { text ->
+                    searchResultRoute(text)
+                    if (!DataPreferences.pauseSearchHistory) {
+                        query { Database.insert(SearchQuery(query = text)) }
+                    }
+                },
+                onPlaylistUrl = { url ->
+                    with(context) {
+                        runCatching { handleUrl(url.toUri(), binder) }
+                            .onFailure { toast(getString(R.string.error_url, url)) }
+                    }
+                },
                 onSettings = { settingsRoute() },
                 onHistory = { builtInPlaylistRoute(BuiltInPlaylist.History) },
-                onDiscover = { searchRoute("") },
+                onDiscover = { navigation.navigate(1) },
                 onAlbum = { albumRoute(it) },
                 onArtist = { artistRoute(it) },
                 onOnlinePlaylist = {

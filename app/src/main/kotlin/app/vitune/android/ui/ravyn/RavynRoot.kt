@@ -6,6 +6,9 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -83,7 +86,8 @@ import app.vitune.providers.innertube.requests.relatedPage
 /** Brand-new Ravyn portrait shell, retaining only existing data and playback APIs. */
 @Composable
 fun RavynRoot(
-    onSearch: () -> Unit,
+    onSearchSubmit: (String) -> Unit,
+    onPlaylistUrl: (String) -> Unit,
     onSettings: () -> Unit,
     onHistory: () -> Unit,
     onDiscover: () -> Unit,
@@ -94,8 +98,8 @@ fun RavynRoot(
 ) {
     val binder = LocalPlayerServiceBinder.current
     val ravynNavigation = LocalRavynNavigation.current
-    ravynNavigation.search = onSearch
-    var tab by ravynNavigation.destination
+    val tab by ravynNavigation.destination
+    val tabStates = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
     var collection by rememberSaveable { mutableStateOf(0) }
     var showCreate by rememberSaveable { mutableStateOf(false) }
     var newName by rememberSaveable { mutableStateOf("") }
@@ -185,18 +189,30 @@ fun RavynRoot(
                     size = 20, bold = true, modifier = Modifier.weight(1f)
                 )
             } else {
-                RavynLabel("Your Library", size = 21, bold = true,
-                    modifier = Modifier.weight(1f))
+                RavynLabel(if (tab == 1) "Search" else "Your Library",
+                    size = 21, bold = true, modifier = Modifier.weight(1f))
             }
             RavynIcon(R.drawable.history, "History", onHistory)
             RavynIcon(R.drawable.settings, "Settings", onSettings)
         }
         AnimatedContent(
             targetState = tab, modifier = Modifier.fillMaxWidth().weight(1f),
-            transitionSpec = { ContentTransform(
-                fadeIn(tween(230)), fadeOut(tween(120)), sizeTransform = null
-            ) }, label = "Ravyn destinations"
+            transitionSpec = {
+                val forward = targetState > initialState
+                ContentTransform(
+                    fadeIn(tween(270, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(tween(300, easing = FastOutSlowInEasing)) {
+                            if (forward) it / 8 else -it / 8
+                        },
+                    fadeOut(tween(160)) +
+                        slideOutHorizontally(tween(240)) {
+                            if (forward) -it / 12 else it / 12
+                        },
+                    sizeTransform = null
+                )
+            }, label = "Ravyn destinations"
         ) { active ->
+            tabStates.SaveableStateProvider(active) {
             if (active == 0) RavynHome(
                 recent = recent, artists = artists, albums = albums,
                 playlists = playlists, related = related,
@@ -213,7 +229,15 @@ fun RavynRoot(
                     binder?.player?.forcePlay(media)
                     binder?.setupRadio(NavigationEndpoint.Endpoint.Watch(videoId = media.mediaId))
                 }
-            ) else RavynLibrary(
+            ) else if (active == 1) {
+                RavynSearchPage(
+                    initialQuery = "",
+                    embedded = true,
+                    onBack = { ravynNavigation.navigate(0) },
+                    onSubmit = onSearchSubmit,
+                    onPlaylistUrl = onPlaylistUrl
+                )
+            } else RavynLibrary(
                 category = collection, setCategory = { collection = it },
                 liked = liked, songs = songs, local = local, albums = albums,
                 artists = artists, playlists = playlists,
@@ -232,6 +256,7 @@ fun RavynRoot(
                         if (song.likedAt == null) System.currentTimeMillis() else null) }
                 }
             )
+            }
         }
         RavynBottomNavigation()
         Spacer(Modifier.height(WindowInsets.systemBars

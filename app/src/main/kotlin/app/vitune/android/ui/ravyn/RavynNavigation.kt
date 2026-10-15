@@ -33,7 +33,8 @@ import app.vitune.android.R
 @Stable
 class RavynNavigationState {
     val destination = mutableIntStateOf(0)
-    var search: () -> Unit = {}
+    /** Changes the visible destination and clears nested route overlays. */
+    var navigate: (Int) -> Unit = { index -> destination.intValue = index }
 }
 
 val LocalRavynNavigation = staticCompositionLocalOf { RavynNavigationState() }
@@ -50,11 +51,11 @@ fun RavynBottomNavigation(modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         RavynNavigationDestination("Home", R.drawable.home, selected == 0,
-            Modifier.weight(1f)) { navigation.destination.intValue = 0 }
+            Modifier.weight(1f)) { navigation.navigate(0) }
         RavynNavigationDestination("Search", R.drawable.search, false,
-            Modifier.weight(1f)) { navigation.search() }
-        RavynNavigationDestination("Your Library", R.drawable.library, selected == 1,
-            Modifier.weight(1f)) { navigation.destination.intValue = 1 }
+            Modifier.weight(1f)) { navigation.navigate(1) }
+        RavynNavigationDestination("Your Library", R.drawable.library, selected == 2,
+            Modifier.weight(1f)) { navigation.navigate(2) }
     }
 }
 
