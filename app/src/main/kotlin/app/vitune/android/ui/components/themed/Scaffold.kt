@@ -1,7 +1,7 @@
 package app.vitune.android.ui.components.themed
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.using
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -58,9 +58,11 @@ fun Scaffold(
             // caused stutters on heavy library lists. Keep just a short
             // Material-era crossfade; don't animate the page's layout size.
             transitionSpec = {
-                (fadeIn(tween(155, easing = FastOutSlowInEasing)))
-                    .togetherWith(fadeOut(tween(90)))
-                    .using(null)
+                ContentTransform(
+                    targetContentEnter = fadeIn(tween(155, easing = FastOutSlowInEasing)),
+                    initialContentExit = fadeOut(tween(90)),
+                    sizeTransform = null
+                )
             },
             content = content,
             label = ""
