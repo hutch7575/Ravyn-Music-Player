@@ -26,12 +26,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +45,8 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import app.vitune.android.R
+import androidx.media3.common.MediaItem
+import app.vitune.android.utils.asMediaItem
 import app.vitune.android.models.Album
 import app.vitune.android.models.Artist
 import app.vitune.android.models.PlaylistPreview
@@ -64,12 +69,34 @@ internal fun RavynClassicHome(
     onOnlinePlaylist: (Innertube.PlaylistItem) -> Unit,
     onLocalPlaylist: (Long) -> Unit,
     onDiscover: () -> Unit, onPlay: (Song) -> Unit,
-    onPlayOnline: (Innertube.SongItem) -> Unit
+    onPlayOnline: (Innertube.SongItem) -> Unit,
+    onSongLongPress: (MediaItem) -> Unit,
+    onCollectionLongPress: (String, String) -> Unit,
+    hiddenRecommendationIds: Set<String>
 ) {
-    val recommendArtists = related?.artists.orEmpty().take(14)
-    val recommendPlaylists = related?.playlists.orEmpty().take(14)
-    val recommendAlbums = related?.albums.orEmpty().take(14)
-    val recommendSongs = related?.songs.orEmpty().take(10)
+    val recommendArtists = related?.artists.orEmpty()
+        .filterNot { "artist:" + it.key in hiddenRecommendationIds }.take(14)
+    val recommendPlaylists = related?.playlists.orEmpty()
+        .filterNot { "playlist:" + it.key in hiddenRecommendationIds }.take(14)
+    val recommendAlbums = related?.albums.orEmpty()
+        .filterNot { "album:" + it.key in hiddenRecommendationIds }.take(14)
+    val recommendSongs = related?.songs.orEmpty()
+        .filterNot { "song:" + it.key in hiddenRecommendationIds }.take(10)
+    // Horizontal rows always open at the first item, including on returning to Home.
+    val artistScroll = rememberLazyListState()
+    val mixScroll = rememberLazyListState()
+    val recentScroll = rememberLazyListState()
+    val albumScroll = rememberLazyListState()
+    LaunchedEffect(Unit) {
+        artistScroll.scrollToItem(0)
+        mixScroll.scrollToItem(0)
+        recentScroll.scrollToItem(0)
+        albumScroll.scrollToItem(0)
+    }
+    LaunchedEffect(recommendArtists.firstOrNull()?.key) { artistScroll.scrollToItem(0) }
+    LaunchedEffect(recommendPlaylists.firstOrNull()?.key) { mixScroll.scrollToItem(0) }
+    LaunchedEffect(recommendAlbums.firstOrNull()?.key) { albumScroll.scrollToItem(0) }
+    LaunchedEffect(recent.firstOrNull()?.id) { recentScroll.scrollToItem(0) }
     LazyColumn(
         contentPadding = PaddingValues(top = 3.dp, bottom = 106.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -103,6 +130,7 @@ internal fun RavynClassicHome(
                         RavynSection("Your favorite artists",
                             Modifier.padding(horizontal = 17.dp))
                         LazyRow(
+                            state = artistScroll,
                             contentPadding = PaddingValues(horizontal = 17.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
@@ -110,7 +138,11 @@ internal fun RavynClassicHome(
                                 items(recommendArtists, key = { it.key }) { artist ->
                                     RavynArtistTile(
                                         artist.thumbnail?.url, artist.info?.name.orEmpty()
-                                    ) { onArtist(artist.key) }
+                                    ) {
+                                        onArtist(artist.key)
+                                    }, onLongClick = {
+                                        onCollectionLongPress("artist:" + artist.key, artist.info?.name.orEmpty())
+                                    }
                                 }
                             } else {
                                 items(artists.take(14), key = { it.id }) { artist ->
@@ -134,6 +166,7 @@ internal fun RavynClassicHome(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         RavynSection("Made for you", Modifier.padding(horizontal = 17.dp))
                         LazyRow(
+                            state = mixScroll,
                             contentPadding = PaddingValues(horizontal = 17.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
@@ -142,7 +175,11 @@ internal fun RavynClassicHome(
                                     RavynSquareTile(
                                         mix.thumbnail?.url, mix.info?.name.orEmpty(),
                                         mix.channel?.name, 124.dp
-                                    ) { onOnlinePlaylist(mix) }
+                                    ) {
+                                        onOnlinePlaylist(mix)
+                                    }, onLongClick = {
+                                        onCollectionLongPress("playlist:" + mix.key, mix.info?.name.orEmpty())
+                                    }
                                 }
                             } else {
                                 items(playlists.take(14), key = { it.id }) { playlist ->
@@ -163,13 +200,16 @@ internal fun RavynClassicHome(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         RavynSection("Recently played", Modifier.padding(horizontal = 17.dp))
                         LazyRow(
+                            state = recentScroll,
                             contentPadding = PaddingValues(horizontal = 17.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(recent.take(18), key = { it.id }) { song ->
                                 RavynRecentTile(
                                     song.thumbnailUrl, song.title, song.artistsText
-                                ) { onPlay(song) }
+                                ) { onPlay(song) }, onLongClick = {
+                                    onSongLongPress(song.asMediaItem)
+                                }
                             }
                         }
                     }
@@ -186,6 +226,7 @@ internal fun RavynClassicHome(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         RavynSection("Albums for you", Modifier.padding(horizontal = 17.dp))
                         LazyRow(
+                            state = albumScroll,
                             contentPadding = PaddingValues(horizontal = 17.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
@@ -194,7 +235,11 @@ internal fun RavynClassicHome(
                                     RavynSquareTile(
                                         album.thumbnail?.url, album.info?.name.orEmpty(),
                                         album.authors?.joinToString { it.name.orEmpty() }, 124.dp
-                                    ) { onAlbum(album.key) }
+                                    ) {
+                                        onAlbum(album.key)
+                                    }, onLongClick = {
+                                        onCollectionLongPress("album:" + album.key, album.info?.name.orEmpty())
+                                    }
                                 }
                             } else {
                                 items(albums.take(14), key = { it.id }) { album ->
@@ -222,7 +267,10 @@ internal fun RavynClassicHome(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 modifier = Modifier.fillMaxWidth().height(61.dp)
-                                    .clickable { onPlayOnline(song) }
+                                     .combinedClickable(
+                                        onClick = { onPlayOnline(song) },
+                                        onLongClick = { onSongLongPress(song.asMediaItem) }
+                                    )
                             ) {
                                 RavynArtwork(song.thumbnail?.url, Modifier.size(46.dp))
                                 Column(Modifier.weight(1f)) {
@@ -274,7 +322,8 @@ internal fun RavynClassicLibrary(
     onLocalPlaylist: (Long) -> Unit,
     onCreate: () -> Unit, onAddSongs: () -> Unit,
     onPlayAll: () -> Unit, onPlay: (List<Song>, Int) -> Unit,
-    onLike: (Song) -> Unit
+    onLike: (Song) -> Unit,
+    onSongLongPress: (MediaItem) -> Unit
 ) {
     val filters = listOf("Liked", "Playlists", "Artists", "Albums", "Songs", "Local")
     var ascending by rememberSaveable { mutableStateOf(false) }
@@ -341,7 +390,8 @@ internal fun RavynClassicLibrary(
                             items(visible, key = { it.id }) { song ->
                                 RavynTrackRow(song,
                                     onClick = { onPlay(visible, visible.indexOf(song)) },
-                                    onLike = { onLike(song) })
+                                    onLike = { onLike(song) },
+                                    onLongClick = { onSongLongPress(song.asMediaItem) })
                             }
                             if (collection.isEmpty()) item {
                                 Column(verticalArrangement = Arrangement.spacedBy(9.dp),
