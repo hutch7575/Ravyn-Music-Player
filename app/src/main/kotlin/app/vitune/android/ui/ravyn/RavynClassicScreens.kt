@@ -75,6 +75,20 @@ internal fun RavynClassicHome(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize()
     ) {
+        item(key = "greeting") {
+            val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+            val message = when (hour) {
+                in 5..11 -> "Good morning"
+                in 12..17 -> "Good afternoon"
+                else -> "Good evening"
+            }
+            RavynArtTintHeader(
+                title = message,
+                subtitle = "Music for every moment",
+                modifier = Modifier.padding(horizontal = 14.dp)
+                    .clickable(onClick = onDiscover)
+            )
+        }
         item(key = "filter") {
             Row(Modifier.padding(horizontal = 17.dp)) { RavynHomeCategoryChip() }
         }
@@ -110,25 +124,6 @@ internal fun RavynClassicHome(
                 }
             }
         }
-        item(key = "history") {
-            RavynReveal(historyLoaded, "Recently played", RavynPlaceholderStyle.Recent) {
-                if (recent.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        RavynSection("Recently played", Modifier.padding(horizontal = 17.dp))
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 17.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(recent.take(18), key = { it.id }) { song ->
-                                RavynRecentTile(
-                                    song.thumbnailUrl, song.title, song.artistsText
-                                ) { onPlay(song) }
-                            }
-                        }
-                    }
-                }
-            }
-        }
         item(key = "mixes") {
             RavynReveal(
                 recommendPlaylists.isNotEmpty() || playlists.isNotEmpty() ||
@@ -156,6 +151,25 @@ internal fun RavynClassicHome(
                                         playlist.songCount.toString() + " songs", 124.dp
                                     ) { onLocalPlaylist(playlist.id) }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        item(key = "history") {
+            RavynReveal(historyLoaded, "Recently played", RavynPlaceholderStyle.Recent) {
+                if (recent.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        RavynSection("Recently played", Modifier.padding(horizontal = 17.dp))
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 17.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(recent.take(18), key = { it.id }) { song ->
+                                RavynRecentTile(
+                                    song.thumbnailUrl, song.title, song.artistsText
+                                ) { onPlay(song) }
                             }
                         }
                     }

@@ -234,30 +234,19 @@ fun RavynRoot(
         .only(WindowInsetsSides.Vertical).asPaddingValues()
     Column(Modifier.fillMaxSize().background(RavynStyle.background)
         .padding(top = insets.calculateTopPadding())) {
-        Row(verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().height(62.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(ravynAccent().copy(alpha = 0.10f),
-                            RavynStyle.background, RavynStyle.background)
-                    )
-                )
-                .padding(start = 17.dp, end = 8.dp)) {
-            if (tab == 0) {
-                val hour = java.util.Calendar.getInstance()
-                    .get(java.util.Calendar.HOUR_OF_DAY)
-                RavynLabel(
-                    when (hour) {
-                        in 5..11 -> "Good morning"
-                        in 12..17 -> "Good afternoon"
-                        else -> "Good evening"
-                    },
-                    size = 20, bold = true, modifier = Modifier.weight(1f)
-                )
-            } else {
-                RavynLabel(if (tab == 1) "Search" else "Your Library",
-                    size = 21, bold = true, modifier = Modifier.weight(1f))
-            }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().height(55.dp)
+                .background(RavynStyle.panel)
+                .padding(start = 17.dp, end = 7.dp)
+        ) {
+            RavynLabel(
+                if (tab == 1) "Search" else if (tab == 2) "Your Library" else "Ravyn",
+                size = 21, bold = true, modifier = Modifier.weight(1f)
+            )
+            RavynIcon(R.drawable.search, "Search", {
+                ravynNavigation.navigate(1)
+            })
             RavynIcon(R.drawable.history, "History", onHistory)
             RavynIcon(R.drawable.settings, "Settings", onSettings)
         }
