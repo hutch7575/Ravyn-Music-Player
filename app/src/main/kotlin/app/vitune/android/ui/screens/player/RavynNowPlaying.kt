@@ -251,7 +251,7 @@ fun RavynNowPlaying(
                           else Modifier)
                     .padding(horizontal = 14.dp)
             ) {
-                Image(painterResource(R.drawable.artist), contentDescription = null,
+                Image(painterResource(R.drawable.musical_notes), contentDescription = null,
                     colorFilter = ColorFilter.tint(accent), modifier = Modifier.size(21.dp))
                 Column(Modifier.weight(1f)) {
                     BasicText("ARTIST", style = TextStyle(
