@@ -1,18 +1,24 @@
 package app.vitune.android.ui.ravyn
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -23,12 +29,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -44,22 +52,22 @@ import app.vitune.core.ui.LocalAppearance
 import coil3.compose.AsyncImage
 
 /**
- * Ravyn 2 design primitives. No themed ViTune item, header or navigation composables
- * are involved. Neutral charcoal surfaces allow the current track artwork to
- * own the accent without turning the whole app into a saturated backdrop.
+ * RAVYN / CLASSIC
+ * A fresh 2016-inspired Material music-player visual system. No inherited
+ * ViTune UI components. Dark surfaces are neutral and the accent belongs to
+ * the current album art; it is never hard-coded to a single green or purple.
  */
 internal object RavynStyle {
-    val background = Color(0xFF0C0F11)
-    val panel = Color(0xFF171B1E)
-    val raised = Color(0xFF22272B)
-    val text = Color(0xFFF7F8FA)
-    val secondary = Color(0xFFB0B8BC)
-    val muted = Color(0xFF81898E)
+    val background = Color(0xFF101113)
+    val panel = Color(0xFF1B1D1E)
+    val raised = Color(0xFF282B2D)
+    val text = Color(0xFFF7F7F7)
+    val secondary = Color(0xFFB8BCBD)
+    val muted = Color(0xFF8E9294)
     val radius = RoundedCornerShape(10.dp)
 }
-
-@Composable
-internal fun ravynAccent(): Color = LocalAppearance.current.colorPalette.accent
+@Composable internal fun ravynAccent(): Color =
+    LocalAppearance.current.colorPalette.accent
 
 @Composable
 internal fun RavynLabel(
@@ -70,63 +78,65 @@ internal fun RavynLabel(
     modifier: Modifier = Modifier,
     lines: Int = 1
 ) {
-    BasicText(value, maxLines = lines, overflow = TextOverflow.Ellipsis,
+    BasicText(
+        text = value, modifier = modifier, maxLines = lines,
+        overflow = TextOverflow.Ellipsis,
         style = TextStyle(
-            color = color, fontSize = size.sp,
+            fontSize = size.sp,
             fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal,
-            letterSpacing = if (size >= 24) (-0.5).sp else 0.sp
-        ), modifier = modifier)
+            letterSpacing = if (size >= 22) (-0.4).sp else 0.sp,
+            color = color
+        )
+    )
 }
 
 @Composable
 internal fun RavynIcon(
-    @DrawableRes icon: Int,
-    description: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    tint: Color = RavynStyle.text
+    @DrawableRes icon: Int, description: String, onClick: () -> Unit,
+    modifier: Modifier = Modifier, tint: Color = RavynStyle.text
 ) {
-    Box(modifier = modifier.size(44.dp).clip(CircleShape).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center) {
-        Image(painterResource(icon), contentDescription = description,
+    Box(
+        modifier.size(42.dp).clip(CircleShape).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(painterResource(icon), description,
             colorFilter = ColorFilter.tint(tint),
-            modifier = Modifier.size(22.dp))
+            modifier = Modifier.size(20.dp))
     }
 }
 
 @Composable
 internal fun RavynArtwork(
-    url: String?,
-    modifier: Modifier = Modifier,
-    round: Boolean = false
+    url: String?, modifier: Modifier = Modifier, round: Boolean = false
 ) {
-    val shape = if (round) CircleShape else RoundedCornerShape(9.dp)
+    val shape = if (round) CircleShape else RoundedCornerShape(5.dp)
     Box(modifier.clip(shape).background(RavynStyle.raised),
         contentAlignment = Alignment.Center) {
-        Image(painterResource(R.drawable.musical_notes), contentDescription = null,
+        Image(painterResource(R.drawable.musical_notes), null,
             colorFilter = ColorFilter.tint(RavynStyle.muted),
-            modifier = Modifier.size(25.dp))
-        AsyncImage(model = url?.thumbnail(600), contentDescription = null,
+            modifier = Modifier.size(24.dp))
+        AsyncImage(
+            model = url?.thumbnail(512),
             contentScale = ContentScale.Crop,
-            modifier = Modifier.matchParentSize().clip(shape))
+            contentDescription = null,
+            modifier = Modifier.matchParentSize().clip(shape)
+        )
     }
 }
 
 @Composable
 internal fun RavynSection(
-    heading: String,
-    modifier: Modifier = Modifier,
-    action: String? = null,
-    onAction: (() -> Unit)? = null
+    heading: String, modifier: Modifier = Modifier,
+    action: String? = null, onAction: (() -> Unit)? = null
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.fillMaxWidth()) {
-        RavynLabel(heading, size = 16, bold = true, modifier = Modifier.weight(1f))
-        if (action != null && onAction != null) Box(
-            Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onAction)
-                .padding(vertical = 8.dp, horizontal = 6.dp)
-        ) {
-            RavynLabel(action, size = 12, color = ravynAccent())
+    Row(modifier.fillMaxWidth().height(28.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        RavynLabel(heading, 16, bold = true, modifier = Modifier.weight(1f))
+        if (action != null && onAction != null) {
+            Box(Modifier.clickable(onClick = onAction)
+                .padding(horizontal = 7.dp, vertical = 5.dp)) {
+                RavynLabel(action, 12, ravynAccent(), bold = true)
+            }
         }
     }
 }
@@ -134,137 +144,155 @@ internal fun RavynSection(
 @Composable
 internal fun RavynPill(value: String, selected: Boolean, onClick: () -> Unit) {
     val accent = ravynAccent()
-    val fill by animateColorAsState(
-        if (selected) accent.copy(alpha = 0.20f) else RavynStyle.panel,
-        animationSpec = tween(220, easing = FastOutSlowInEasing), label = "Pill")
-    val stroke by animateColorAsState(
-        if (selected) accent else Color.White.copy(alpha = 0.18f),
-        animationSpec = tween(220), label = "Pill border")
+    val bg by animateColorAsState(
+        if (selected) accent.copy(alpha = 0.22f) else RavynStyle.panel,
+        tween(210, easing = FastOutSlowInEasing), label = "Classic filter"
+    )
+    val fg by animateColorAsState(
+        if (selected) accent else RavynStyle.secondary,
+        tween(210), label = "Filter text"
+    )
     Box(
-        Modifier.border(1.dp, stroke, CircleShape)
-            .background(fill, CircleShape).clip(CircleShape)
-            .clickable(onClick = onClick).padding(horizontal = 15.dp, vertical = 9.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        RavynLabel(value, 12, if (selected) accent else RavynStyle.secondary, selected)
-    }
+        Modifier
+            .border(0.7.dp, if (selected) accent.copy(alpha = .75f)
+                else Color.White.copy(alpha = .16f), CircleShape)
+            .clip(CircleShape).background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 7.dp)
+    ) { RavynLabel(value, 11, fg, selected) }
 }
 
 @Composable
 internal fun RavynSquareTile(
-    image: String?,
-    name: String,
-    subtitle: String? = null,
-    width: Dp = 136.dp,
-    onClick: () -> Unit
+    image: String?, name: String, subtitle: String? = null,
+    width: Dp = 130.dp, onClick: () -> Unit
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.width(width).clip(RoundedCornerShape(9.dp)).clickable(onClick = onClick)
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+        modifier = Modifier.width(width).clickable(onClick = onClick)
     ) {
         RavynArtwork(image, Modifier.size(width))
-        RavynLabel(name, size = 12, bold = true, modifier = Modifier.padding(horizontal = 2.dp))
-        if (subtitle != null) RavynLabel(subtitle, 10, RavynStyle.secondary,
-            modifier = Modifier.padding(horizontal = 2.dp))
+        RavynLabel(name, 12, bold = true, lines = 2)
+        if (!subtitle.isNullOrBlank())
+            RavynLabel(subtitle, 10, RavynStyle.secondary)
     }
 }
 
 @Composable
 internal fun RavynArtistTile(image: String?, name: String, onClick: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.width(72.dp).clickable(onClick = onClick)) {
-        RavynArtwork(image, Modifier.size(61.dp), round = true)
-        RavynLabel(name, 11, modifier = Modifier.fillMaxWidth())
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+        modifier = Modifier.width(72.dp).clickable(onClick = onClick)
+    ) {
+        RavynArtwork(image, Modifier.size(62.dp), round = true)
+        RavynLabel(name, 10, lines = 2)
     }
 }
 
 @Composable
 internal fun RavynTrackRow(
-    song: Song,
-    onClick: () -> Unit,
-    onLike: (() -> Unit)? = null,
-    showHeart: Boolean = true
+    song: Song, onClick: () -> Unit,
+    onLike: (() -> Unit)? = null, showHeart: Boolean = true
 ) {
     val accent = ravynAccent()
-    Row(verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth().height(70.dp).clickable(onClick = onClick)
-            .padding(horizontal = 2.dp)) {
-        RavynArtwork(song.thumbnailUrl, Modifier.size(54.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.weight(1f)) {
-            RavynLabel(song.title, 14, bold = true)
-            RavynLabel(song.artistsText.orEmpty(), 12, RavynStyle.secondary)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth().height(61.dp)
+            .clickable(onClick = onClick)
+    ) {
+        RavynArtwork(song.thumbnailUrl, Modifier.size(45.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            RavynLabel(song.title, 12, bold = true)
+            RavynLabel(song.artistsText.orEmpty(), 10, RavynStyle.secondary)
         }
         if (showHeart && onLike != null) {
             RavynIcon(
-                if (song.likedAt == null) R.drawable.heart_outline else R.drawable.heart,
-                if (song.likedAt == null) "Like" else "Unlike",
-                onClick = onLike,
-                tint = if (song.likedAt == null) RavynStyle.secondary else accent
+                if (song.likedAt != null) R.drawable.heart else R.drawable.heart_outline,
+                if (song.likedAt != null) "Unlike" else "Like",
+                onLike, tint = if (song.likedAt != null) accent else RavynStyle.muted,
+                modifier = Modifier.size(35.dp)
             )
         }
     }
 }
 
 @Composable
-internal fun RavynHero(title: String, subtitle: String, @DrawableRes icon: Int, onClick: () -> Unit) {
+internal fun RavynHero(
+    title: String, subtitle: String, @DrawableRes icon: Int, onClick: () -> Unit
+) {
     val accent = ravynAccent()
-    Row(verticalAlignment = Alignment.CenterVertically,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
-            .background(
-                Brush.horizontalGradient(listOf(RavynStyle.panel, RavynStyle.raised)),
-                RavynStyle.radius
-            ).padding(18.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.weight(1f)) {
-            RavynLabel(title, size = 23, bold = true)
-            RavynLabel(subtitle, size = 12, color = RavynStyle.secondary)
+            .background(Brush.horizontalGradient(listOf(
+                androidx.compose.ui.graphics.lerp(RavynStyle.panel, accent, .22f),
+                RavynStyle.panel
+            )), RoundedCornerShape(7.dp))
+            .padding(horizontal = 15.dp, vertical = 16.dp)
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            RavynLabel(title, 22, bold = true)
+            RavynLabel(subtitle, 11, RavynStyle.secondary)
         }
-        Box(Modifier.size(49.dp).clip(CircleShape).background(accent)
-            .clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-            Image(painterResource(icon), contentDescription = "Play",
-                colorFilter = ColorFilter.tint(RavynStyle.background),
-                modifier = Modifier.size(24.dp))
+        Box(Modifier.size(44.dp).clip(CircleShape)
+            .background(accent).clickable(onClick = onClick),
+            contentAlignment = Alignment.Center) {
+            Image(painterResource(icon), "Play",
+                colorFilter = ColorFilter.tint(Color(0xFF111315)),
+                modifier = Modifier.size(22.dp))
         }
     }
 }
 
-/** A low-contrast filter chip, matching the classic reference's little 'Music' pill. */
 @Composable
 internal fun RavynHomeCategoryChip() {
     Box(
-        modifier = Modifier
-            .background(RavynStyle.raised, RoundedCornerShape(7.dp))
-            .padding(horizontal = 11.dp, vertical = 6.dp)
-    ) {
-        RavynLabel("Music", 10, RavynStyle.secondary)
-    }
+        Modifier.background(RavynStyle.raised, RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+    ) { RavynLabel("Music", 10, RavynStyle.secondary) }
 }
 
-/** Compact history card with artwork beside the text, not another tall album tile. */
 @Composable
 internal fun RavynRecentTile(
     artwork: String?, title: String, artist: String?, onClick: () -> Unit
 ) {
     Row(
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier
-            .width(165.dp)
-            .height(57.dp)
-            .clip(RoundedCornerShape(8.dp))
+        modifier = Modifier.width(160.dp).height(58.dp)
+            .clip(RoundedCornerShape(5.dp))
             .background(RavynStyle.panel)
-            .clickable(onClick = onClick)
-            .padding(5.dp)
+            .clickable(onClick = onClick).padding(5.dp)
     ) {
-        RavynArtwork(artwork, Modifier.size(47.dp))
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            RavynLabel(title, 11, RavynStyle.text, bold = true)
-            RavynLabel(artist.orEmpty(), 10, RavynStyle.secondary)
+        RavynArtwork(artwork, Modifier.size(48.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            RavynLabel(title, 11, bold = true)
+            RavynLabel(artist.orEmpty(), 9, RavynStyle.secondary)
+        }
+    }
+}
+
+/** One-source-of-truth artwork-adaptive header used throughout the app. */
+@Composable
+internal fun RavynArtTintHeader(
+    title: String, subtitle: String, modifier: Modifier = Modifier
+) {
+    val accent = ravynAccent()
+    val wash by animateColorAsState(
+        lerp(RavynStyle.panel, accent, .18f),
+        tween(540), label = "Album colour wash"
+    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(wash, RavynStyle.background)))
+            .padding(horizontal = 17.dp, vertical = 12.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            RavynLabel(title, 20, bold = true)
+            RavynLabel(subtitle, 11, RavynStyle.secondary)
         }
     }
 }
