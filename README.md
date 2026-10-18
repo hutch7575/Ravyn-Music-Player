@@ -1,12 +1,8 @@
 # Ravyn
 
-A standalone, open-source Android music player built on the work of [ViTune](https://github.com/bartoostveen/ViTune), with the spirit of classic 2015–2017 Material Design.
+A standalone, open-source Android music player built on the work of [ViTune](https://github.com/bartoostveen/ViTune), Designed to be more user-friendly and feel quicker and snappier.
 
-Ravyn focuses on a familiar music-library experience, fast playback, playlists, favourites, lyrics, and a simple interface. The classic Material Design-inspired UI is a design direction in progress; the first release preserves the existing, tested player layout.
-
-## Downloads
-
-Install the **signed universal APK** from [GitHub Releases](https://github.com/hutch7575/Ravyn-Music-Player/releases) once the first release is published. Do not install debug artifacts as production releases.
+Ravyn focuses on being a simple music player that can act as an offline music player, but also allows the user the convenience of saving localy and listening to music directly from YouTube Music and free.
 
 ## Development
 
