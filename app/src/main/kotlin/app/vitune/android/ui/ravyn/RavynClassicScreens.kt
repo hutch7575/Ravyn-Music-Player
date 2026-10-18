@@ -137,12 +137,14 @@ internal fun RavynClassicHome(
                             if (recommendArtists.isNotEmpty()) {
                                 items(recommendArtists, key = { it.key }) { artist ->
                                     RavynArtistTile(
-                                        artist.thumbnail?.url, artist.info?.name.orEmpty()
-                                    ) {
-                                        onArtist(artist.key)
-                                    }, onLongClick = {
-                                        onCollectionLongPress("artist:" + artist.key, artist.info?.name.orEmpty())
-                                    }
+                                        image = artist.thumbnail?.url,
+                                        name = artist.info?.name.orEmpty(),
+                                        onLongClick = {
+                                            onCollectionLongPress("artist:" + artist.key,
+                                                artist.info?.name.orEmpty())
+                                        },
+                                        onClick = { onArtist(artist.key) }
+                                    )
                                 }
                             } else {
                                 items(artists.take(14), key = { it.id }) { artist ->
@@ -173,13 +175,15 @@ internal fun RavynClassicHome(
                             if (recommendPlaylists.isNotEmpty()) {
                                 items(recommendPlaylists, key = { it.key }) { mix ->
                                     RavynSquareTile(
-                                        mix.thumbnail?.url, mix.info?.name.orEmpty(),
-                                        mix.channel?.name, 124.dp
-                                    ) {
-                                        onOnlinePlaylist(mix)
-                                    }, onLongClick = {
-                                        onCollectionLongPress("playlist:" + mix.key, mix.info?.name.orEmpty())
-                                    }
+                                        image = mix.thumbnail?.url,
+                                        name = mix.info?.name.orEmpty(),
+                                        subtitle = mix.channel?.name, width = 124.dp,
+                                        onLongClick = {
+                                            onCollectionLongPress("playlist:" + mix.key,
+                                                mix.info?.name.orEmpty())
+                                        },
+                                        onClick = { onOnlinePlaylist(mix) }
+                                    )
                                 }
                             } else {
                                 items(playlists.take(14), key = { it.id }) { playlist ->
@@ -206,10 +210,11 @@ internal fun RavynClassicHome(
                         ) {
                             items(recent.take(18), key = { it.id }) { song ->
                                 RavynRecentTile(
-                                    song.thumbnailUrl, song.title, song.artistsText
-                                ) { onPlay(song) }, onLongClick = {
-                                    onSongLongPress(song.asMediaItem)
-                                }
+                                    artwork = song.thumbnailUrl, title = song.title,
+                                    artist = song.artistsText,
+                                    onLongClick = { onSongLongPress(song.asMediaItem) },
+                                    onClick = { onPlay(song) }
+                                )
                             }
                         }
                     }
@@ -233,13 +238,16 @@ internal fun RavynClassicHome(
                             if (recommendAlbums.isNotEmpty()) {
                                 items(recommendAlbums, key = { it.key }) { album ->
                                     RavynSquareTile(
-                                        album.thumbnail?.url, album.info?.name.orEmpty(),
-                                        album.authors?.joinToString { it.name.orEmpty() }, 124.dp
-                                    ) {
-                                        onAlbum(album.key)
-                                    }, onLongClick = {
-                                        onCollectionLongPress("album:" + album.key, album.info?.name.orEmpty())
-                                    }
+                                        image = album.thumbnail?.url,
+                                        name = album.info?.name.orEmpty(),
+                                        subtitle = album.authors?.joinToString { it.name.orEmpty() },
+                                        width = 124.dp,
+                                        onLongClick = {
+                                            onCollectionLongPress("album:" + album.key,
+                                                album.info?.name.orEmpty())
+                                        },
+                                        onClick = { onAlbum(album.key) }
+                                    )
                                 }
                             } else {
                                 items(albums.take(14), key = { it.id }) { album ->

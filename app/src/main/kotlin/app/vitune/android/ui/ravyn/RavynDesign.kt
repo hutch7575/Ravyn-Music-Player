@@ -166,8 +166,8 @@ internal fun RavynPill(value: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 internal fun RavynSquareTile(
     image: String?, name: String, subtitle: String? = null,
-    width: Dp = 130.dp, onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null
+    width: Dp = 130.dp, onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(5.dp),
@@ -184,8 +184,8 @@ internal fun RavynSquareTile(
 
 @Composable
 internal fun RavynArtistTile(
-    image: String?, name: String, onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null
+    image: String?, name: String, onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -266,8 +266,8 @@ internal fun RavynHomeCategoryChip() {
 
 @Composable
 internal fun RavynRecentTile(
-    artwork: String?, title: String, artist: String?, onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null
+    artwork: String?, title: String, artist: String?,
+    onLongClick: (() -> Unit)? = null, onClick: () -> Unit
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(7.dp),

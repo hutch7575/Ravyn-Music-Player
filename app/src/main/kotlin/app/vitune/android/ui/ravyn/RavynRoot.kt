@@ -128,9 +128,7 @@ fun RavynRoot(
                     query {
                         Database.insert(item)
                         // Blacklisting also filters future radio recommendations.
-                        if (!Database.blacklistedIds().contains(item.mediaId)) {
-                            Database.toggleBlacklist(item.mediaId)
-                        }
+                        Database.toggleBlacklist(item.mediaId)
                     }
                 }
             )
