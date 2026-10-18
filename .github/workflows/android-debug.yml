@@ -11,6 +11,7 @@ on:
       - feat/ravyn-ui-from-scratch
       - master
       - release/ravyn-v2-rebuild
+      - fix/ravyn-v2.0.1-playback-and-polish
   workflow_dispatch:
 
 jobs:

@@ -53,3 +53,10 @@
 -dontwarn org.slf4j.impl.StaticLoggerBinder
 
 -keep class ch.qos.logback.classic.android.** { *; }
+
+# Logback's layout is instantiated by name at runtime from assets/logback.xml.
+-keep class ch.qos.logback.classic.PatternLayout { public <init>(); *; }
+-keep class ch.qos.logback.classic.pattern.** { *; }
+-keep class ch.qos.logback.core.pattern.** { *; }
+-keep class ch.qos.logback.core.LayoutBase { *; }
+-keepattributes Signature,InnerClasses,EnclosingMethod

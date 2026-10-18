@@ -69,6 +69,7 @@ import app.vitune.android.query
 import app.vitune.android.service.PlayerService
 import app.vitune.android.transaction
 import app.vitune.android.ui.ravyn.RavynBottomNavigation
+import app.vitune.android.ui.screens.artistRoute
 import app.vitune.android.ui.components.BottomSheet
 import app.vitune.android.ui.components.BottomSheetState
 import app.vitune.android.ui.components.LocalMenuState
@@ -492,6 +493,11 @@ fun Player(
             },
             onShowLyrics = { isShowingLyrics = true },
             onShowQueue = playerBottomSheetState::expandSoft,
+            albumTitle = metadata?.albumTitle?.toString(),
+            onArtistClick = mediaItem?.mediaMetadata?.extras?.songBundle
+                ?.artistIds?.firstOrNull()?.let { artistId ->
+                    { artistRoute.global(artistId) }
+                },
             thumbnailContent = thumbnailContent,
             // Draw the artwork-derived backdrop behind the system status bar.
             modifier = Modifier.clip(shape).fillMaxSize()

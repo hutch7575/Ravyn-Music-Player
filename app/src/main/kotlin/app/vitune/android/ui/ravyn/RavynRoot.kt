@@ -63,6 +63,9 @@ import app.vitune.android.Database
 import app.vitune.android.LocalPlayerAwareWindowInsets
 import app.vitune.android.LocalPlayerServiceBinder
 import app.vitune.android.R
+import androidx.media3.common.MediaItem
+import app.vitune.android.ui.components.LocalMenuState
+import app.vitune.android.ui.components.themed.NonQueuedMediaItemMenu
 import app.vitune.android.models.Album
 import app.vitune.android.models.Artist
 import app.vitune.android.models.Playlist
@@ -106,6 +109,31 @@ fun RavynRoot(
     onLocalPlaylist: (Long) -> Unit
 ) {
     val binder = LocalPlayerServiceBinder.current
+    val menuState = LocalMenuState.current
+    var hiddenRecommendations by remember {
+        mutableStateOf(DataPreferences.hiddenRecommendations.toSet())
+    }
+    var hideCollection by remember { mutableStateOf<Pair<String, String>?>(null) }
+    fun hideRecommendation(id: String) {
+        hiddenRecommendations = hiddenRecommendations + id
+        DataPreferences.hiddenRecommendations = hiddenRecommendations.toList()
+    }
+    val onSongLongPress: (MediaItem) -> Unit = { item ->
+        menuState.display {
+            NonQueuedMediaItemMenu(
+                onDismiss = menuState::hide,
+                mediaItem = item,
+                onRemoveFromQuickPicks = {
+                    hideRecommendation("song:" + item.mediaId)
+                    query {
+                        Database.insert(item)
+                        // Blacklisting also filters future radio recommendations.
+                        Database.blacklistSong(item.mediaId)
+                    }
+                }
+            )
+        }
+    }
     val ravynNavigation = LocalRavynNavigation.current
     val tab by ravynNavigation.destination
     val tabStates = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
@@ -209,6 +237,23 @@ fun RavynRoot(
         relatedLoaded = true
     }
 
+    hideCollection?.let { (id, title) ->
+        AlertDialog(
+            onDismissRequest = { hideCollection = null },
+            title = { Text(title.ifBlank { "Recommendation" }, color = RavynStyle.text) },
+            text = { Text("Hide this from your Home recommendations?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    hideRecommendation(id)
+                    hideCollection = null
+                }) { Text("Hide", color = ravynAccent()) }
+            },
+            dismissButton = {
+                TextButton(onClick = { hideCollection = null }) { Text("Cancel") }
+            },
+            containerColor = RavynStyle.panel
+        )
+    }
     if (showCreate) AlertDialog(
         onDismissRequest = { showCreate = false },
         title = { Text("Create playlist", color = RavynStyle.text) },
@@ -275,6 +320,9 @@ fun RavynRoot(
                 playlistsLoaded = playlistsLoaded, albumsLoaded = albumsLoaded,
                 relatedLoaded = relatedLoaded, relatedError = relatedError,
                 onRetry = { refreshRecommendations += 1 },
+                hiddenRecommendationIds = hiddenRecommendations,
+                onSongLongPress = onSongLongPress,
+                onCollectionLongPress = { id, label -> hideCollection = id to label },
                 onArtist = onArtist, onAlbum = onAlbum,
                 onOnlinePlaylist = onOnlinePlaylist, onLocalPlaylist = onLocalPlaylist,
                 onDiscover = onDiscover,
@@ -302,6 +350,7 @@ fun RavynRoot(
                 artists = artists, playlists = playlists,
                 onAlbum = onAlbum, onArtist = onArtist, onLocalPlaylist = onLocalPlaylist,
                 onCreate = { showCreate = true },
+                onSongLongPress = onSongLongPress,
                 onAddSongs = { ravynNavigation.navigate(1) },
                 onPlayAll = {
                     binder?.stopRadio()

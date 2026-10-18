@@ -71,6 +71,8 @@ fun RavynNowPlaying(
     onMore: () -> Unit,
     onShowLyrics: () -> Unit,
     onShowQueue: () -> Unit,
+    albumTitle: String?,
+    onArtistClick: (() -> Unit)?,
     thumbnailContent: @Composable (Modifier) -> Unit,
     modifier: Modifier = Modifier
 ) = BoxWithConstraints(modifier.fillMaxSize()) {
@@ -237,7 +239,43 @@ fun RavynNowPlaying(
         Spacer(Modifier.height(if (compact) 3.dp else 5.dp))
         RavynPlayerCard("UP NEXT", R.drawable.enqueue,
             accent, highlighted = false, onShowQueue)
-        Spacer(Modifier.height(if (compact) 5.dp else 15.dp))
+        if (artist.isNotBlank()) {
+            Spacer(Modifier.height(if (compact) 5.dp else 10.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+                    .height(if (compact) 45.dp else 52.dp)
+                    .background(Color.White.copy(alpha = 0.045f))
+                    .then(if (onArtistClick != null) Modifier.clickable(onClick = onArtistClick)
+                          else Modifier)
+                    .padding(horizontal = 14.dp)
+            ) {
+                Image(painterResource(R.drawable.musical_notes), contentDescription = null,
+                    colorFilter = ColorFilter.tint(accent), modifier = Modifier.size(21.dp))
+                Column(Modifier.weight(1f)) {
+                    BasicText("ARTIST", style = TextStyle(
+                        color = sub, fontSize = 10.sp, letterSpacing = 0.5.sp))
+                    BasicText(artist, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = TextStyle(
+                            color = main, fontWeight = FontWeight.Medium,
+                            fontSize = 13.sp))
+                    if (!compact && !albumTitle.isNullOrBlank()) {
+                        BasicText(albumTitle, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = TextStyle(color = sub, fontSize = 10.sp))
+                    }
+                }
+                if (onArtistClick != null) Image(
+                    painterResource(R.drawable.chevron_forward),
+                    contentDescription = "Open artist profile",
+                    colorFilter = ColorFilter.tint(sub),
+                    modifier = Modifier.size(17.dp)
+                )
+            }
+        }
+        Spacer(Modifier.height(if (compact) 4.dp else 9.dp))
     }
 }
 

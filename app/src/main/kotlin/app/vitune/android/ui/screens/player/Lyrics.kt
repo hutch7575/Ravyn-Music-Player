@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.C
@@ -328,11 +329,11 @@ fun Lyrics(
     BoxWithConstraints(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .pointerInput(Unit) {
+            .then(if (ravynStyle) Modifier else Modifier.pointerInput(Unit) {
                 detectTapGestures(onTap = { onDismiss() })
-            }
+            })
             .fillMaxSize()
-            .background(if (ravynStyle) Color(0xEB14192B) else colorPalette.overlay)
+            .background(if (ravynStyle) Color(0xFF15191B) else colorPalette.overlay)
     ) {
         val animatedHeight by animateDpAsState(
             targetValue = this.maxHeight, // `this` needed, thanks Android Lint!
@@ -433,7 +434,8 @@ fun Lyrics(
                 if (synchronizedLyrics != null) LazyColumn(
                     state = lazyListState,
                     userScrollEnabled = false,
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    horizontalAlignment = if (ravynStyle) Alignment.Start
+                        else Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .verticalFadingEdge()
@@ -447,7 +449,7 @@ fun Lyrics(
                     ) { index, sentence ->
                         val color by animateColorAsState(
                             targetValue = if (index == synchronizedLyrics.index) Color.White
-                            else if (ravynStyle) Color(0xFFAEB5CB)
+                            else if (ravynStyle) Color(0xFF92999B)
                             else colorPalette.textDisabled,
                             animationSpec = tween(210),
                             label = "Synced lyrics highlight"
@@ -462,15 +464,15 @@ fun Lyrics(
                                 .size(typography.xs.fontSize.dp)
                         ) else BasicText(
                             text = sentence,
-                            style = if (ravynStyle) typography.xs.center.medium.color(color).copy(
+                            style = if (ravynStyle) typography.xs.medium.color(color).copy(
                                 fontSize = if (index == synchronizedLyrics.index) 20.sp else 17.sp,
-                                lineHeight = 27.sp,
+                                lineHeight = 29.sp, textAlign = TextAlign.Start,
                                 fontWeight = if (index == synchronizedLyrics.index)
-                                    FontWeight.SemiBold else FontWeight.Medium
+                                    FontWeight.SemiBold else FontWeight.Normal
                             ) else typography.xs.center.medium.color(color),
                             modifier = Modifier.padding(
-                                vertical = if (ravynStyle) 9.dp else 4.dp,
-                                horizontal = if (ravynStyle) 20.dp else 32.dp
+                                vertical = if (ravynStyle) 11.dp else 4.dp,
+                                horizontal = if (ravynStyle) 25.dp else 32.dp
                             )
                         )
                     }
@@ -480,18 +482,18 @@ fun Lyrics(
                 }
             } else BasicText(
                 text = lyrics?.fixed.orEmpty(),
-                style = if (ravynStyle) typography.xs.center.medium.color(Color(0xFFF0EFF9)).copy(
-                    fontSize = 18.sp,
-                    lineHeight = 30.sp,
-                    fontWeight = FontWeight.Medium
+                style = if (ravynStyle) typography.xs.medium.color(Color(0xFFF2F4F3)).copy(
+                    fontSize = 17.sp,
+                    lineHeight = 31.sp, textAlign = TextAlign.Start,
+                    fontWeight = FontWeight.Normal
                 ) else typography.xs.center.medium.color(colorPalette.onOverlay),
                 modifier = Modifier
                     .verticalFadingEdge()
                     .verticalScroll(rememberScrollState())
                     .fillMaxWidth()
                     .padding(
-                        vertical = if (ravynStyle) maxHeight / 5 else maxHeight / 4,
-                        horizontal = if (ravynStyle) 22.dp else 32.dp
+                        vertical = if (ravynStyle) 32.dp else maxHeight / 4,
+                        horizontal = if (ravynStyle) 25.dp else 32.dp
                     )
             )
         }

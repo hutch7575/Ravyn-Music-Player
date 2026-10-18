@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag || 'v2.0.0' }}
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag || 'v2.0.1' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -98,5 +98,23 @@ jobs:
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "Ravyn-$RELEASE_TAG.apk" --clobber
           else
-            gh release create "$RELEASE_TAG" "Ravyn-$RELEASE_TAG.apk" --target "$GITHUB_SHA" --title "Ravyn $RELEASE_TAG — Classic Rebuilt" --notes "A complete 2016-inspired classic Android music-player UI rebuild. Includes artwork-adaptive accents, redesigned Home, Search, Library, Now Playing, collections and navigation, using the existing Ravyn playback and data engine. Future fixes ship as patch releases."
+            gh release create "$RELEASE_TAG" "Ravyn-$RELEASE_TAG.apk" --target "$GITHUB_SHA" --title "Ravyn $RELEASE_TAG — Playback & UI Fixes" --notes "## Ravyn v2.0.1
+
+          A patch to the 2016-inspired Ravyn v2 interface.
+
+          ### Playback
+          - Add a single bounded recovery attempt if playback stays buffering for more than 25 seconds.
+          - Log stream errors and HTTP response codes, including rate-limit responses, without aggressive retry loops.
+          - Repair release-mode Logback configuration to make future playback faults easier to diagnose.
+
+          ### Interface
+          - Home carousels return to their first item when re-entering Home or loading new recommendations.
+          - Enforce one-line titles across music cards.
+          - Long-press songs for Play Next, Queue, playlists, and Don't Recommend.
+          - Long-press recommended artists, albums, and playlists to hide them from Home.
+          - Rebuild the lyrics reader with clearer text, song details, and synchronized scrolling.
+          - Add an artist section on Now Playing with profile navigation.
+
+          ### Notes
+          This is a stability patch, not a change to the established Ravyn Classic design. Provider-side outages and rate limits cannot be fully prevented by the app."
           fi
