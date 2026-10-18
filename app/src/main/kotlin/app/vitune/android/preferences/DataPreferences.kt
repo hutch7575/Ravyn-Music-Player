@@ -25,6 +25,8 @@ object DataPreferences : GlobalPreferencesHolder() {
     var versionCheckPeriod by enum(VersionCheckPeriod.Off)
     var shouldCacheQuickPicks by boolean(true)
     var cachedQuickPicks by json(Innertube.RelatedPage())
+    // Explicit user dismissals are kept separately from provider recommendations.
+    var hiddenRecommendations by json(emptyList<String>())
     var autoSyncPlaylists by boolean(true)
 
     enum class TopListPeriod(
