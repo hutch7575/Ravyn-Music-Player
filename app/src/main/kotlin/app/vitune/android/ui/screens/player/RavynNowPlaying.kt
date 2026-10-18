@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -74,7 +75,7 @@ fun RavynNowPlaying(
     modifier: Modifier = Modifier
 ) = BoxWithConstraints(modifier.fillMaxSize()) {
     val compact = maxHeight < 615.dp
-    val horizontal = if (maxWidth < 350.dp) 20.dp else 26.dp
+    val horizontal = if (maxWidth < 350.dp) 18.dp else 23.dp
     val animatedColor by animateColorAsState(
         targetValue = artworkAccent,
         animationSpec = tween(560, easing = FastOutSlowInEasing),
@@ -86,10 +87,10 @@ fun RavynNowPlaying(
 
     Box(Modifier.fillMaxSize().background(
         Brush.verticalGradient(
-            0f to lerp(Color(0xFF191715), animatedColor, 0.36f),
-            0.40f to lerp(Color(0xFF151516), animatedColor, 0.18f),
-            0.82f to Color(0xFF101214),
-            1f to Color(0xFF0C0E10)
+            0f to lerp(Color(0xFF18191A), animatedColor, 0.27f),
+            0.33f to lerp(Color(0xFF171819), animatedColor, 0.12f),
+            0.78f to Color(0xFF141516),
+            1f to Color(0xFF111214)
         )
     ))
 
@@ -103,8 +104,8 @@ fun RavynNowPlaying(
             RavynPlayerIcon(R.drawable.chevron_down, "Close player", onCollapse)
             Spacer(Modifier.weight(1f))
             BasicText("NOW PLAYING", style = TextStyle(
-                color = main, fontSize = 12.sp,
-                letterSpacing = 1.sp, fontWeight = FontWeight.SemiBold))
+                color = main, fontSize = 13.sp,
+                letterSpacing = 0.35.sp, fontWeight = FontWeight.Medium))
             Spacer(Modifier.weight(1f))
             RavynPlayerIcon(R.drawable.ellipsis_horizontal, "More options", onMore)
         }
@@ -117,7 +118,7 @@ fun RavynNowPlaying(
             val side = minOf(maxWidth, maxHeight, 450.dp)
             if (side > 0.dp) {
                 thumbnailContent(Modifier.size(side)
-                    .clip(RoundedCornerShape(11.dp)))
+                    .clip(RoundedCornerShape(2.dp)))
             }
         }
 
@@ -127,13 +128,13 @@ fun RavynNowPlaying(
             Column(modifier = Modifier.weight(1f)) {
                 BasicText(title, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     style = TextStyle(
-                        color = main, fontSize = if (compact) 23.sp else 26.sp,
+                        color = main, fontSize = if (compact) 19.sp else 22.sp,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = (-0.6).sp
                     ))
                 Spacer(Modifier.height(5.dp))
                 BasicText(artist, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    style = TextStyle(color = sub, fontSize = 15.sp))
+                    style = TextStyle(color = sub, fontSize = 13.sp))
             }
             RavynPlayerIcon(
                 if (likedAt == null) R.drawable.heart_outline else R.drawable.heart,
@@ -143,7 +144,7 @@ fun RavynNowPlaying(
             )
         }
 
-        Spacer(Modifier.height(if (compact) 10.dp else 22.dp))
+        Spacer(Modifier.height(if (compact) 8.dp else 15.dp))
         Box(Modifier.fillMaxWidth().height(15.dp),
             contentAlignment = Alignment.Center) {
             if (binder != null && media != null && media.duration > 0L
@@ -169,12 +170,12 @@ fun RavynNowPlaying(
             )
         }
 
-        Spacer(Modifier.height(if (compact) 10.dp else 25.dp))
+        Spacer(Modifier.height(if (compact) 7.dp else 15.dp))
         val player = binder?.player
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().height(76.dp)
+            modifier = Modifier.fillMaxWidth().height(66.dp)
         ) {
             RavynPlayerIcon(
                 R.drawable.shuffle, "Shuffle",
@@ -189,7 +190,7 @@ fun RavynNowPlaying(
                 { player?.forceSeekToPrevious() }, main, Modifier.weight(1f)
             )
             Box(
-                Modifier.size(68.dp).clip(CircleShape)
+                Modifier.size(60.dp).clip(CircleShape)
                     .background(Color.White)
                     .clickable {
                         if (player != null) {
@@ -229,11 +230,11 @@ fun RavynNowPlaying(
                 Modifier.weight(1f)
             )
         }
-        Spacer(Modifier.height(if (compact) 7.dp else 17.dp))
+        Spacer(Modifier.height(if (compact) 7.dp else 15.dp))
 
         RavynPlayerCard("LYRICS", R.drawable.musical_notes,
             accent, highlighted = true, onShowLyrics)
-        Spacer(Modifier.height(if (compact) 7.dp else 13.dp))
+        Spacer(Modifier.height(if (compact) 3.dp else 5.dp))
         RavynPlayerCard("UP NEXT", R.drawable.enqueue,
             accent, highlighted = false, onShowQueue)
         Spacer(Modifier.height(if (compact) 5.dp else 15.dp))
@@ -261,26 +262,27 @@ private fun RavynPlayerCard(
     label: String, @DrawableRes icon: Int, accent: Color,
     highlighted: Boolean, onClick: () -> Unit
 ) {
-    val color by animateColorAsState(
-        if (highlighted) accent.copy(alpha = 0.17f) else Color(0xFF1D2225),
-        animationSpec = tween(420), label = "Action surface"
-    )
+    val line = Color.White.copy(alpha = 0.12f)
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        modifier = Modifier.fillMaxWidth().height(55.dp)
-            .clip(RoundedCornerShape(12.dp)).background(color)
-            .clickable(onClick = onClick).padding(horizontal = 18.dp)
+        horizontalArrangement = Arrangement.spacedBy(13.dp),
+        modifier = Modifier.fillMaxWidth().height(47.dp)
+            .border(width = 0.5.dp, color = line)
+            .background(Color(0xFF191B1D).copy(alpha = 0.42f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp)
     ) {
-        Image(painterResource(icon), null,
+        Image(painterResource(icon), contentDescription = null,
             colorFilter = ColorFilter.tint(if (highlighted) accent else Color.White),
-            modifier = Modifier.size(20.dp))
-        BasicText(label, modifier = Modifier.weight(1f),
-            style = TextStyle(color = Color.White, fontSize = 12.sp,
-                fontWeight = FontWeight.Medium, letterSpacing = 0.5.sp))
-        Image(painterResource(R.drawable.chevron_forward), null,
-            colorFilter = ColorFilter.tint(if (highlighted) accent else Color.LightGray),
             modifier = Modifier.size(18.dp))
+        BasicText(label, modifier = Modifier.weight(1f),
+            style = TextStyle(
+                color = Color.White, fontSize = 11.sp,
+                fontWeight = FontWeight.Medium, letterSpacing = 0.45.sp
+            ))
+        Image(painterResource(R.drawable.chevron_forward), contentDescription = null,
+            colorFilter = ColorFilter.tint(Color(0xFFB4B8BA)),
+            modifier = Modifier.size(16.dp))
     }
 }
 
