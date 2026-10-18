@@ -19,6 +19,9 @@ import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Bundle
 import android.os.SystemClock
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import android.support.v4.media.session.MediaSessionCompat
 import android.text.format.DateUtils
 import androidx.annotation.OptIn
@@ -182,6 +185,33 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     private val streamUriCache = UriCache<String, Long?>()
     private var playbackRecoveryAttempts = 0
     private lateinit var player: ExoPlayer
+
+    // A missing HTTP error does not imply the player is healthy: some stream
+    // extractors or network connections can stall in BUFFERING indefinitely.
+    private val stallHandler = Handler(Looper.getMainLooper())
+    private val stallCheck = Runnable {
+        if (::player.isInitialized &&
+            player.playbackState == Player.STATE_BUFFERING &&
+            player.playWhenReady && player.currentMediaItem != null &&
+            playbackRecoveryAttempts == 0
+        ) {
+            playbackRecoveryAttempts++
+            val id = player.currentMediaItem?.mediaId
+            Log.w(TAG, "Playback buffering > 25s: attempting one recovery for $id")
+            if (id?.startsWith(LOCAL_KEY_PREFIX) != true) streamUriCache.clear()
+            player.prepare()
+            player.play()
+        }
+    }
+    private fun monitorBuffering() {
+        stallHandler.removeCallbacks(stallCheck)
+        if (::player.isInitialized && player.playbackState == Player.STATE_BUFFERING &&
+            player.playWhenReady && player.currentMediaItem != null &&
+            playbackRecoveryAttempts == 0
+        ) {
+            stallHandler.postDelayed(stallCheck, 25_000L)
+        }
+    }
 
     private val defaultActions =
         PlaybackState.ACTION_PLAY or
@@ -420,13 +450,21 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         super.onTaskRemoved(rootIntent)
     }
 
-    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) =
+    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
         maybeSavePlayerQueue()
+        monitorBuffering()
+    }
+
+    override fun onPlaybackStateChanged(playbackState: Int) {
+        if (playbackState == Player.STATE_READY) playbackRecoveryAttempts = 0
+        monitorBuffering()
+    }
 
     override fun onDestroy() {
         runCatching {
             maybeSavePlayerQueue()
 
+            stallHandler.removeCallbacks(stallCheck)
             player.removeListener(this)
             player.stop()
             player.release()
@@ -491,6 +529,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        stallHandler.removeCallbacks(stallCheck)
         playbackRecoveryAttempts = 0
         if (
             AppearancePreferences.hideExplicit &&
@@ -528,6 +567,15 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         super.onPlayerError(error)
 
         val httpCode = error.findCause<InvalidResponseCodeException>()?.responseCode
+        Log.e(TAG, "Playback error: mediaId=${player.currentMediaItem?.mediaId} " +
+            "http=$httpCode code=${error.errorCodeName}", error)
+        // A 429 is an upstream rate limit. Do not immediately hammer the same
+        // provider with repeated extraction requests; leave controls responsive
+        // so a user can retry after the limit lifts or play local music.
+        if (httpCode == 429) {
+            stallHandler.removeCallbacks(stallCheck)
+            return
+        }
         val duration = player.duration
         val isNearEnd = duration > 0L && duration != C.TIME_UNSET &&
             player.currentPosition >= (duration - 6_000L).coerceAtLeast(0L)
