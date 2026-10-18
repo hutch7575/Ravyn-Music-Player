@@ -74,7 +74,7 @@ fun LyricsDialog(
                 .background(RavynStyle.background)
                 .pinchToToggle(
                     direction = PinchDirection.In, threshold = 0.9f,
-                    onPinch = onDismiss
+                    onPinch = { onDismiss() }
                 )
                 .onSwipe(
                     onSwipeLeft = { player.forceSeekToNext() },
