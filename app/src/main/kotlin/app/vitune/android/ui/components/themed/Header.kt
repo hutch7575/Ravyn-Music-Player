@@ -50,7 +50,7 @@ fun Header(
 ) = Box(
     contentAlignment = Alignment.CenterEnd,
     modifier = modifier
-        .padding(horizontal = 16.dp)
+        .padding(horizontal = 18.dp)
         .height(Dimensions.items.headerHeight)
         .fillMaxWidth()
 ) {

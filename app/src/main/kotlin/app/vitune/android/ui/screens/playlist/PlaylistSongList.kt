@@ -70,6 +70,7 @@ fun PlaylistSongList(
     params: String?,
     maxDepth: Int?,
     shouldDedup: Boolean,
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val (colorPalette) = LocalAppearance.current
@@ -125,133 +126,29 @@ fun PlaylistSongList(
         }
     )
 
-    val headerContent: @Composable () -> Unit = {
-        if (playlistPage == null) HeaderPlaceholder(modifier = Modifier.shimmer())
-        else Header(title = playlistPage?.title ?: stringResource(R.string.unknown)) {
-            SecondaryTextButton(
-                text = stringResource(R.string.enqueue),
-                enabled = playlistPage?.songsPage?.items?.isNotEmpty() == true,
-                onClick = {
-                    playlistPage?.songsPage?.items?.map(Innertube.SongItem::asMediaItem)
-                        ?.let { mediaItems ->
-                            binder?.player?.enqueue(mediaItems)
-                        }
-                }
-            )
 
-            Spacer(modifier = Modifier.weight(1f))
-
-            playlistPage?.songsPage?.items?.map(Innertube.SongItem::asMediaItem)
-                ?.let { PlaylistDownloadIcon(songs = it.toImmutableList()) }
-
-            HeaderIconButton(
-                icon = R.drawable.add,
-                color = colorPalette.text,
-                onClick = { isImportingPlaylist = true }
-            )
-
-            HeaderIconButton(
-                icon = R.drawable.share_social,
-                color = colorPalette.text,
-                onClick = {
-                    val url = playlistPage?.url
-                        ?: "https://music.youtube.com/playlist?list=${browseId.removePrefix("VL")}"
-
-                    val sendIntent = Intent().apply {
-                        action = Intent.ACTION_SEND
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, url)
-                    }
-
-                    context.startActivity(Intent.createChooser(sendIntent, null))
-                }
+    app.vitune.android.ui.ravyn.RavynRemotePlaylist(
+        title = playlistPage?.title ?: "Playlist",
+        description = playlistPage?.description,
+        artwork = playlistPage?.thumbnail?.url,
+        songs = playlistPage?.songsPage?.items.orEmpty(),
+        onBack = onBack,
+        onPlay = { index ->
+            val tracks = playlistPage?.songsPage?.items.orEmpty().map { it.asMediaItem }
+            binder?.stopRadio()
+            binder?.player?.forcePlayAtIndex(tracks, index)
+        },
+        onShuffle = {
+            val tracks = playlistPage?.songsPage?.items.orEmpty().shuffled()
+                .map { it.asMediaItem }
+            binder?.stopRadio()
+            binder?.player?.forcePlayFromBeginning(tracks)
+        },
+        onImport = { isImportingPlaylist = true },
+        onEnqueue = {
+            binder?.player?.enqueue(
+                playlistPage?.songsPage?.items.orEmpty().map { it.asMediaItem }
             )
         }
-    }
-
-    val thumbnailContent = adaptiveThumbnailContent(
-        isLoading = playlistPage == null,
-        url = playlistPage?.thumbnail?.url
     )
-
-    val lazyListState = rememberLazyListState()
-
-    val [currentMediaId, playing] = playingSong(binder)
-
-    LayoutWithAdaptiveThumbnail(
-        thumbnailContent = thumbnailContent,
-        modifier = modifier
-    ) {
-        Box {
-            LazyColumn(
-                state = lazyListState,
-                contentPadding = LocalPlayerAwareWindowInsets.current
-                    .only(WindowInsetsSides.Vertical + WindowInsetsSides.End)
-                    .asPaddingValues(),
-                modifier = Modifier
-                    .background(colorPalette.background0)
-                    .fillMaxSize()
-            ) {
-                item(
-                    key = "header",
-                    contentType = 0
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        headerContent()
-                        if (!isLandscape) thumbnailContent()
-                        PlaylistInfo(playlist = playlistPage)
-                    }
-                }
-
-                itemsIndexed(items = playlistPage?.songsPage?.items ?: emptyList()) { index, song ->
-                    SongItem(
-                        song = song,
-                        thumbnailSize = Dimensions.thumbnails.song,
-                        modifier = Modifier
-                            .combinedClickable(
-                                onLongClick = {
-                                    menuState.display {
-                                        NonQueuedMediaItemMenu(
-                                            onDismiss = menuState::hide,
-                                            mediaItem = song.asMediaItem
-                                        )
-                                    }
-                                },
-                                onClick = {
-                                    playlistPage?.songsPage?.items?.map(Innertube.SongItem::asMediaItem)
-                                        ?.let { mediaItems ->
-                                            binder?.stopRadio()
-                                            binder?.player?.forcePlayAtIndex(mediaItems, index)
-                                        }
-                                }
-                            ),
-                        isPlaying = playing && currentMediaId == song.key
-                    )
-                }
-
-                if (playlistPage == null) item(key = "loading") {
-                    ShimmerHost(modifier = Modifier.fillParentMaxSize()) {
-                        repeat(4) {
-                            SongItemPlaceholder(thumbnailSize = Dimensions.thumbnails.song)
-                        }
-                    }
-                }
-            }
-
-            FloatingActionsContainerWithScrollToTop(
-                lazyListState = lazyListState,
-                icon = R.drawable.shuffle,
-                onClick = {
-                    playlistPage?.songsPage?.items?.let { songs ->
-                        if (songs.isNotEmpty()) {
-                            binder?.stopRadio()
-                            binder?.player?.forcePlayFromBeginning(
-                                songs.shuffled().map(Innertube.SongItem::asMediaItem)
-                            )
-                        }
-                    }
-                }
-            )
-        }
-    }
 }

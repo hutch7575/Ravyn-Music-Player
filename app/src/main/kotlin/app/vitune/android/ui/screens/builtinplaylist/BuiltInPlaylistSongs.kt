@@ -1,7 +1,17 @@
 package app.vitune.android.ui.screens.builtinplaylist
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -12,12 +22,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -29,6 +47,7 @@ import app.vitune.android.models.Song
 import app.vitune.android.preferences.DataPreferences
 import app.vitune.android.ui.components.LocalMenuState
 import app.vitune.android.ui.components.themed.FloatingActionsContainerWithScrollToTop
+import app.vitune.android.ui.components.themed.RavynSortChip
 import app.vitune.android.ui.components.themed.Header
 import app.vitune.android.ui.components.themed.InHistoryMediaItemMenu
 import app.vitune.android.ui.components.themed.NonQueuedMediaItemMenu
@@ -61,6 +80,8 @@ import kotlinx.coroutines.flow.map
 @Composable
 fun BuiltInPlaylistSongs(
     builtInPlaylist: BuiltInPlaylist,
+    onBack: () -> Unit = {},
+    onSelect: (BuiltInPlaylist) -> Unit = {},
     modifier: Modifier = Modifier
 ) = with(DataPreferences) {
     val (colorPalette) = LocalAppearance.current
@@ -110,135 +131,48 @@ fun BuiltInPlaylistSongs(
         }.collect { songs = it.toImmutableList() }
     }
 
-    val lazyListState = rememberLazyListState()
 
-    val [currentMediaId, playing] = playingSong(binder)
-
-    Box(modifier = modifier) {
-        LazyColumn(
-            state = lazyListState,
-            contentPadding = LocalPlayerAwareWindowInsets.current
-                .only(WindowInsetsSides.Vertical + WindowInsetsSides.End)
-                .asPaddingValues(),
-            modifier = Modifier
-                .background(colorPalette.background0)
-                .fillMaxSize()
-        ) {
-            item(
-                key = "header",
-                contentType = 0
-            ) {
-                Header(
-                    title = when (builtInPlaylist) {
-                        BuiltInPlaylist.Favorites -> stringResource(R.string.favorites)
-
-                        BuiltInPlaylist.Offline -> stringResource(R.string.offline)
-
-                        BuiltInPlaylist.Top -> stringResource(
-                            R.string.format_my_top_playlist,
-                            topListLength
-                        )
-
-                        BuiltInPlaylist.History -> stringResource(R.string.history)
-                    },
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    SecondaryTextButton(
-                        text = stringResource(R.string.enqueue),
-                        enabled = songs.isNotEmpty(),
-                        onClick = {
-                            binder?.player?.enqueue(songs.map(Song::asMediaItem))
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    if (builtInPlaylist != BuiltInPlaylist.Offline) PlaylistDownloadIcon(
-                        songs = songs.map(Song::asMediaItem).toImmutableList()
-                    )
-
-                    if (builtInPlaylist.sortable) HeaderSongSortBy(
-                        sortBy = sortBy,
-                        setSortBy = { sortBy = it },
-                        sortOrder = sortOrder,
-                        setSortOrder = { sortOrder = it }
-                    )
-
-                    if (builtInPlaylist == BuiltInPlaylist.Top) {
-                        var dialogShowing by rememberSaveable { mutableStateOf(false) }
-
-                        SecondaryTextButton(
-                            text = topListPeriod.displayName(),
-                            onClick = { dialogShowing = true }
-                        )
-
-                        if (dialogShowing) ValueSelectorDialog(
-                            onDismiss = { dialogShowing = false },
-                            title = stringResource(
-                                R.string.format_view_top_of_header,
-                                topListLength
-                            ),
-                            selectedValue = topListPeriod,
-                            values = DataPreferences.TopListPeriod.entries.toImmutableList(),
-                            onValueSelect = { topListPeriod = it },
-                            valueText = { it.displayName() }
-                        )
-                    }
-                }
+    app.vitune.android.ui.ravyn.RavynCollectionDetail(
+        title = when (builtInPlaylist) {
+            BuiltInPlaylist.Favorites -> "Liked Songs"
+            BuiltInPlaylist.Offline -> "Offline music"
+            BuiltInPlaylist.Top -> "Your top songs"
+            BuiltInPlaylist.History -> "Listening history"
+        },
+        artist = "Your music",
+        artwork = songs.firstOrNull()?.thumbnailUrl,
+        tracks = songs,
+        onBack = onBack,
+        onPlay = { index ->
+            binder?.stopRadio()
+            binder?.player?.forcePlayAtIndex(songs.map { it.asMediaItem }, index)
+        },
+        onShuffle = {
+            binder?.stopRadio()
+            binder?.player?.forcePlayFromBeginning(
+                songs.shuffled().map { it.asMediaItem }
+            )
+        },
+        onLike = { song ->
+            app.vitune.android.query {
+                Database.like(song.id,
+                    if (song.likedAt == null) System.currentTimeMillis() else null)
             }
-
-            itemsIndexed(
-                items = songs,
-                key = { _, song -> song.id },
-                contentType = { _, song -> song }
-            ) { index, song ->
-                SongItem(
-                    modifier = Modifier
-                        .combinedClickable(
-                            onLongClick = {
-                                menuState.display {
-                                    when (builtInPlaylist) {
-                                        BuiltInPlaylist.Offline -> InHistoryMediaItemMenu(
-                                            song = song,
-                                            onDismiss = menuState::hide
-                                        )
-
-                                        BuiltInPlaylist.Favorites,
-                                        BuiltInPlaylist.Top,
-                                        BuiltInPlaylist.History -> NonQueuedMediaItemMenu(
-                                            mediaItem = song.asMediaItem,
-                                            onDismiss = menuState::hide
-                                        )
-                                    }
-                                }
-                            },
-                            onClick = {
-                                binder?.stopRadio()
-                                binder?.player?.forcePlayAtIndex(
-                                    items = songs.map(Song::asMediaItem),
-                                    index = index
-                                )
-                            }
-                        )
-                        .animateItem(),
-                    song = song,
-                    index = if (builtInPlaylist == BuiltInPlaylist.Top) index else null,
-                    thumbnailSize = Dimensions.thumbnails.song,
-                    isPlaying = playing && currentMediaId == song.id
-                )
+        },
+        subnav = {
+            androidx.compose.foundation.layout.Row(
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .horizontalScroll(androidx.compose.foundation.rememberScrollState())
+                    .padding(horizontal = 17.dp, vertical = 11.dp)
+            ) {
+                listOf("Liked", "Offline", "Top", "History")
+                    .forEachIndexed { index, label ->
+                        app.vitune.android.ui.ravyn.RavynPill(
+                            label, builtInPlaylist.ordinal == index
+                        ) { onSelect(BuiltInPlaylist.entries[index]) }
+                    }
             }
         }
-
-        FloatingActionsContainerWithScrollToTop(
-            lazyListState = lazyListState,
-            icon = R.drawable.shuffle,
-            onClick = {
-                if (songs.isEmpty()) return@FloatingActionsContainerWithScrollToTop
-                binder?.stopRadio()
-                binder?.player?.forcePlayFromBeginning(
-                    songs.shuffled().map(Song::asMediaItem)
-                )
-            }
-        )
-    }
+    )
 }

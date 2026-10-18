@@ -33,7 +33,7 @@ data class ColorPalette(
     val isDark: Boolean
 ) : Parcelable
 
-private val defaultAccentColor = Color(0xff3e44ce).hsl
+private val defaultAccentColor = Color(0xff8f9fb1).hsl
 
 val defaultLightPalette = ColorPalette(
     background0 = Color(0xfffdfdfe),
@@ -49,12 +49,12 @@ val defaultLightPalette = ColorPalette(
 )
 
 val defaultDarkPalette = ColorPalette(
-    background0 = Color(0xff16171d),
-    background1 = Color(0xff1f2029),
-    background2 = Color(0xff2b2d3b),
-    text = Color(0xffe1e1e2),
-    textSecondary = Color(0xffa3a4a6),
-    textDisabled = Color(0xff6f6f73),
+    background0 = Color(0xff0e1012),
+    background1 = Color(0xff191c1f),
+    background2 = Color(0xff282c30),
+    text = Color(0xfff6f7f8),
+    textSecondary = Color(0xffaeb5bb),
+    textDisabled = Color(0xff788087),
     accent = defaultAccentColor.color,
     onAccent = Color.White,
     isDefault = true,
@@ -118,40 +118,19 @@ private fun darkColorPalette(
     saturation: Float,
     darkness: Darkness
 ) = ColorPalette(
-    background0 = if (darkness == Darkness.Normal) Color.hsl(
-        hue = hue,
-        saturation = saturation.coerceAtMost(0.1f),
-        lightness = 0.10f
-    ) else Color.Black,
-    background1 = if (darkness == Darkness.Normal) Color.hsl(
-        hue = hue,
-        saturation = saturation.coerceAtMost(0.3f),
-        lightness = 0.15f
-    ) else Color.Black,
-    background2 = if (darkness == Darkness.Normal) Color.hsl(
-        hue = hue,
-        saturation = saturation.coerceAtMost(0.4f),
-        lightness = 0.2f
-    ) else Color.Black,
-    text = Color.hsl(
-        hue = hue,
-        saturation = saturation.coerceAtMost(0.02f),
-        lightness = 0.88f
-    ),
-    textSecondary = Color.hsl(
-        hue = hue,
-        saturation = saturation.coerceAtMost(0.1f),
-        lightness = 0.65f
-    ),
-    textDisabled = Color.hsl(
-        hue = hue,
-        saturation = saturation.coerceAtMost(0.2f),
-        lightness = 0.40f
-    ),
+    // Neutral, dark Material surfaces stay coherent as the artwork changes.
+    // Album colour belongs in accents and the player, never in full-screen
+    // tinted list backgrounds (expensive to repaint and hard to read).
+    background0 = if (darkness == Darkness.Normal) Color(0xff0e1012) else Color.Black,
+    background1 = if (darkness == Darkness.Normal) Color(0xff191c1f) else Color(0xff0d0f11),
+    background2 = if (darkness == Darkness.Normal) Color(0xff282c30) else Color(0xff202326),
+    text = Color(0xfff6f7f8),
+    textSecondary = Color(0xffaeb5bb),
+    textDisabled = Color(0xff788087),
     accent = Color.hsl(
         hue = hue,
-        saturation = saturation.coerceAtMost(if (darkness == Darkness.AMOLED) 0.4f else 0.5f),
-        lightness = 0.5f
+        saturation = saturation.coerceIn(0.50f, 0.77f),
+        lightness = 0.64f
     ),
     onAccent = Color.White,
     isDefault = false,
@@ -179,18 +158,10 @@ fun dynamicAccentColorOf(
     val palette = Palette
         .from(bitmap)
         .maximumColorCount(8)
-        .addFilter(if (isDark) ({ _, hsl -> hsl[0] !in 36f..100f }) else null)
         .generate()
 
-    val hsl = if (isDark) {
-        palette.dominantSwatch ?: Palette
-            .from(bitmap)
-            .maximumColorCount(8)
-            .generate()
-            .dominantSwatch
-    } else {
-        palette.dominantSwatch
-    }?.hsl ?: return null
+    val hsl = (palette.vibrantSwatch ?: palette.mutedSwatch ?: palette.dominantSwatch)
+        ?.hsl ?: return null
 
     val arr = if (hsl[1] < 0.08)
         palette.swatches

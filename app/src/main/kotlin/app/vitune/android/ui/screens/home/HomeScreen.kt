@@ -1,17 +1,30 @@
 package app.vitune.android.ui.screens.home
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
+import app.vitune.android.Database
+import app.vitune.android.LocalPlayerServiceBinder
 import app.vitune.android.R
+import app.vitune.android.handleUrl
+import app.vitune.android.models.SearchQuery
+import app.vitune.android.preferences.DataPreferences
+import app.vitune.android.query
+import app.vitune.android.ui.ravyn.LocalRavynNavigation
+import app.vitune.android.ui.screens.searchResultRoute
+import app.vitune.android.utils.toast
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import app.vitune.android.models.toUiMood
 import app.vitune.android.preferences.UIStatePreferences
-import app.vitune.android.ui.components.themed.Scaffold
+import app.vitune.android.ui.ravyn.RavynRoot
 import app.vitune.android.ui.screens.GlobalRoutes
 import app.vitune.android.ui.screens.Route
 import app.vitune.android.ui.screens.albumRoute
 import app.vitune.android.ui.screens.artistRoute
 import app.vitune.android.ui.screens.builtInPlaylistRoute
 import app.vitune.android.ui.screens.builtinplaylist.BuiltInPlaylistScreen
+import app.vitune.android.ui.screens.builtinplaylist.BuiltInPlaylistSongs
+import app.vitune.core.data.enums.BuiltInPlaylist
 import app.vitune.android.ui.screens.localPlaylistRoute
 import app.vitune.android.ui.screens.localplaylist.LocalPlaylistScreen
 import app.vitune.android.ui.screens.mood.MoodScreen
@@ -36,7 +49,16 @@ fun HomeScreen() {
 
     PersistMapCleanup("home/")
 
+    val navigation = LocalRavynNavigation.current
+    val context = LocalContext.current
+    val binder = LocalPlayerServiceBinder.current
     RouteHandler {
+        navigation.navigate = { tab ->
+            navigation.destination.intValue = tab
+            // Dismiss an open search-result/album/settings route, not only the
+            // hidden Home tab underneath it.
+            replace(null)
+        }
         GlobalRoutes()
 
         localPlaylistRoute { playlistId ->
@@ -60,81 +82,32 @@ fun HomeScreen() {
         }
 
         Content {
-            Scaffold(
-                key = "home",
-                topIconButtonId = R.drawable.settings,
-                onTopIconButtonClick = { settingsRoute() },
-                tabIndex = UIStatePreferences.homeScreenTabIndex,
-                onTabChange = { UIStatePreferences.homeScreenTabIndex = it },
-                tabColumnContent = {
-                    tab(0, R.string.quick_picks, R.drawable.sparkles)
-                    tab(1, R.string.discover, R.drawable.globe)
-                    tab(2, R.string.songs, R.drawable.musical_notes)
-                    tab(3, R.string.playlists, R.drawable.playlist)
-                    tab(4, R.string.artists, R.drawable.person)
-                    tab(5, R.string.albums, R.drawable.disc)
-                    tab(6, R.string.local, R.drawable.download)
-                }
-            ) { currentTabIndex ->
-                saveableStateHolder.SaveableStateProvider(key = currentTabIndex) {
-                    val onSearchClick = { searchRoute("") }
-                    when (currentTabIndex) {
-                        0 -> QuickPicks(
-                            onAlbumClick = { albumRoute(it.key) },
-                            onArtistClick = { artistRoute(it.key) },
-                            onPlaylistClick = {
-                                playlistRoute(
-                                    p0 = it.key,
-                                    p1 = null,
-                                    p2 = null,
-                                    p3 = it.channel?.name == "YouTube Music"
-                                )
-                            },
-                            onSearchClick = onSearchClick
-                        )
-
-                        1 -> HomeDiscovery(
-                            onMoodClick = { mood -> moodRoute(mood.toUiMood()) },
-                            onNewReleaseAlbumClick = { albumRoute(it) },
-                            onSearchClick = onSearchClick,
-                            onMoreMoodsClick = { moreMoodsRoute() },
-                            onMoreAlbumsClick = { moreAlbumsRoute() },
-                            onPlaylistClick = { playlistRoute(it, null, null, true) }
-                        )
-
-                        2 -> HomeSongs(
-                            onSearchClick = onSearchClick
-                        )
-
-                        3 -> HomePlaylists(
-                            onBuiltInPlaylist = { builtInPlaylistRoute(it) },
-                            onPlaylistClick = { localPlaylistRoute(it.id) },
-                            onPipedPlaylistClick = { session, playlist ->
-                                pipedPlaylistRoute(
-                                    p0 = session.apiBaseUrl.toString(),
-                                    p1 = session.token,
-                                    p2 = playlist.id.toString()
-                                )
-                            },
-                            onSearchClick = onSearchClick
-                        )
-
-                        4 -> HomeArtistList(
-                            onArtistClick = { artistRoute(it.id) },
-                            onSearchClick = onSearchClick
-                        )
-
-                        5 -> HomeAlbums(
-                            onAlbumClick = { albumRoute(it.id) },
-                            onSearchClick = onSearchClick
-                        )
-
-                        6 -> HomeLocalSongs(
-                            onSearchClick = onSearchClick
-                        )
+            RavynRoot(
+                onSearchSubmit = { text ->
+                    searchResultRoute(text)
+                    if (!DataPreferences.pauseSearchHistory) {
+                        query { Database.insert(SearchQuery(query = text)) }
                     }
-                }
-            }
+                },
+                onPlaylistUrl = { url ->
+                    with(context) {
+                        runCatching { handleUrl(url.toUri(), binder) }
+                            .onFailure { toast(getString(R.string.error_url, url)) }
+                    }
+                },
+                onSettings = { settingsRoute() },
+                onHistory = { builtInPlaylistRoute(BuiltInPlaylist.History) },
+                onDiscover = { navigation.navigate(1) },
+                onAlbum = { albumRoute(it) },
+                onArtist = { artistRoute(it) },
+                onOnlinePlaylist = {
+                    playlistRoute(
+                        p0 = it.key, p1 = null, p2 = null,
+                        p3 = it.channel?.name == "YouTube Music"
+                    )
+                },
+                onLocalPlaylist = { localPlaylistRoute(it) }
+            )
         }
     }
 }

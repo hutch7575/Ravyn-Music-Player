@@ -12,18 +12,12 @@ import app.vitune.core.ui.ThumbnailRoundness
 object AppearancePreferences : GlobalPreferencesHolder() {
     var colorSource by enum(
         when (OldPreferences.oldColorPaletteName) {
-            ColorPaletteName.Default, ColorPaletteName.PureBlack -> ColorSource.Default
+            ColorPaletteName.Default, ColorPaletteName.PureBlack -> ColorSource.Dynamic
             ColorPaletteName.Dynamic, ColorPaletteName.AMOLED -> ColorSource.Dynamic
             ColorPaletteName.MaterialYou -> ColorSource.MaterialYou
         }
     )
-    var colorMode by enum(
-        when (OldPreferences.oldColorPaletteMode) {
-            ColorPaletteMode.Light -> ColorMode.Light
-            ColorPaletteMode.Dark -> ColorMode.Dark
-            ColorPaletteMode.System -> ColorMode.System
-        }
-    )
+    var colorMode by enum(ColorMode.Dark)
     var darkness by enum(
         when (OldPreferences.oldColorPaletteName) {
             ColorPaletteName.Default, ColorPaletteName.Dynamic, ColorPaletteName.MaterialYou -> Darkness.Normal
@@ -32,7 +26,7 @@ object AppearancePreferences : GlobalPreferencesHolder() {
         }
     )
     var thumbnailRoundness by enum(ThumbnailRoundness.Medium)
-    var fontFamily by enum(BuiltInFontFamily.Poppins)
+    var fontFamily by enum(BuiltInFontFamily.System)
     var applyFontPadding by boolean(false)
     val isShowingThumbnailInLockscreenProperty = boolean(true)
     var isShowingThumbnailInLockscreen by isShowingThumbnailInLockscreenProperty

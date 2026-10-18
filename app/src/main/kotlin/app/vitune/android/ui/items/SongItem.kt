@@ -153,12 +153,12 @@ private fun SongItem(
             Box(
                 modifier = Modifier
                     .clip(thumbnailShape)
-                    .background(colorPalette.background1)
+                    .background(colorPalette.background2)
                     .fillMaxSize()
             ) {
                 AsyncImage(
                     model = thumbnailUrl,
-                    error = painterResource(id = R.drawable.ic_launcher_foreground),
+                    error = painterResource(id = R.drawable.musical_notes),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

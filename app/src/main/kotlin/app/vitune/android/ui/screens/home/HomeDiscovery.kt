@@ -133,11 +133,49 @@ fun HomeDiscovery(
                 )
         ) {
             Header(
-                title = stringResource(R.string.discover),
+                title = "Discover music",
                 modifier = Modifier.padding(endPaddingValues)
             )
 
             discoverPage?.getOrNull()?.let { page ->
+                if (page.newReleaseAlbums.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        FadingRow(
+                            modifier = Modifier.weight(
+                                weight = 1f,
+                                fill = false
+                            )
+                        ) {
+                            BasicText(
+                                text = stringResource(R.string.new_released_albums),
+                                style = typography.m.semiBold,
+                                modifier = sectionTextModifier
+                            )
+                        }
+
+                        SecondaryTextButton(
+                            text = stringResource(R.string.more),
+                            onClick = onMoreAlbumsClick,
+                            modifier = sectionTextModifier
+                        )
+                    }
+
+                    LazyRow(contentPadding = endPaddingValues) {
+                        items(items = page.newReleaseAlbums, key = { it.key }) {
+                            AlbumItem(
+                                album = it,
+                                thumbnailSize = Dimensions.thumbnails.album,
+                                alternative = true,
+                                modifier = Modifier.clickable(onClick = { onNewReleaseAlbumClick(it.key) })
+                            )
+                        }
+                    }
+                }
+
                 if (page.moods.isNotEmpty()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -183,44 +221,6 @@ fun HomeDiscovery(
                                 modifier = Modifier
                                     .width(itemWidth)
                                     .padding(4.dp)
-                            )
-                        }
-                    }
-                }
-
-                if (page.newReleaseAlbums.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        FadingRow(
-                            modifier = Modifier.weight(
-                                weight = 1f,
-                                fill = false
-                            )
-                        ) {
-                            BasicText(
-                                text = stringResource(R.string.new_released_albums),
-                                style = typography.m.semiBold,
-                                modifier = sectionTextModifier
-                            )
-                        }
-
-                        SecondaryTextButton(
-                            text = stringResource(R.string.more),
-                            onClick = onMoreAlbumsClick,
-                            modifier = sectionTextModifier
-                        )
-                    }
-
-                    LazyRow(contentPadding = endPaddingValues) {
-                        items(items = page.newReleaseAlbums, key = { it.key }) {
-                            AlbumItem(
-                                album = it,
-                                thumbnailSize = Dimensions.thumbnails.album,
-                                alternative = true,
-                                modifier = Modifier.clickable(onClick = { onNewReleaseAlbumClick(it.key) })
                             )
                         }
                     }
@@ -299,7 +299,6 @@ fun HomeDiscovery(
                                             )
                                         }
                                     )
-                                    .animateItem(fadeInSpec = null, fadeOutSpec = null)
                                     .width(itemWidth),
                                 showDuration = false,
                                 isPlaying = playing && currentMediaId == song.key

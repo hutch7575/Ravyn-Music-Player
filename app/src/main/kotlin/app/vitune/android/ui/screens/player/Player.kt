@@ -48,6 +48,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -67,6 +68,7 @@ import app.vitune.android.preferences.PlayerPreferences
 import app.vitune.android.query
 import app.vitune.android.service.PlayerService
 import app.vitune.android.transaction
+import app.vitune.android.ui.ravyn.RavynBottomNavigation
 import app.vitune.android.ui.components.BottomSheet
 import app.vitune.android.ui.components.BottomSheetState
 import app.vitune.android.ui.components.LocalMenuState
@@ -177,6 +179,10 @@ fun Player(
     val metadata = remember(mediaItem) { mediaItem?.mediaMetadata }
     val extras = remember(metadata) { metadata?.extras?.songBundle }
 
+    val bottomSystemBarPadding = windowInsets
+        .only(WindowInsetsSides.Bottom)
+        .asPaddingValues()
+        .calculateBottomPadding()
     val horizontalBottomPaddingValues = windowInsets
         .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
         .asPaddingValues()
@@ -192,9 +198,10 @@ fun Player(
         },
         backHandlerEnabled = !menuState.isDisplayed,
         collapsedContent = { innerModifier ->
+            Column(modifier = Modifier.fillMaxWidth()) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .let { modifier ->
                         if (horizontalSwipeToClose) modifier.onSwipe(
@@ -206,23 +213,27 @@ fun Player(
                             }
                         ) else modifier
                     }
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .height(Dimensions.items.collapsedPlayerHeight)
                     .clip(shape)
                     .background(colorPalette.background1)
                     .drawBehind {
+                        // Classic two-pixel progress line. The previous design
+                        // repainted the entire mini-player background as time
+                        // advanced, making the layout visually noisy.
                         drawRect(
-                            color = colorPalette.collapsedPlayerProgressBar,
-                            topLeft = Offset.Zero,
+                            color = colorPalette.accent,
+                            topLeft = Offset(0f, 0f),
                             size = Size(
-                                width = runCatching {
-                                    size.width * (position.toFloat() / duration.absoluteValue)
-                                }.getOrElse { 0f },
-                                height = size.height
+                                width = if (duration > 0L)
+                                    (size.width * (position.toFloat() / duration)).coerceIn(0f, size.width)
+                                else 0f,
+                                height = 2.dp.toPx()
                             )
                         )
                     }
                     .then(innerModifier)
-                    .padding(horizontalBottomPaddingValues)
+                    .padding(horizontal = 10.dp)
             ) {
                 Spacer(modifier = Modifier.width(2.dp))
 
@@ -237,7 +248,7 @@ fun Player(
                         modifier = Modifier
                             .clip(thumbnailCornerSize.coerceAtMost(ThumbnailRoundness.Heavy.dp).roundedShape)
                             .background(colorPalette.background0)
-                            .size(48.dp)
+                            .size(42.dp)
                     )
                 }
 
@@ -343,6 +354,10 @@ fun Player(
 
                 Spacer(modifier = Modifier.width(2.dp))
             }
+            // Mini-player first, with permanent bottom navigation directly beneath it.
+            RavynBottomNavigation()
+            Spacer(Modifier.height(bottomSystemBarPadding))
+            }
         }
     ) {
         var isShowingStatsForNerds by rememberSaveable { mutableStateOf(false) }
@@ -350,8 +365,11 @@ fun Player(
 
         if (isShowingLyricsDialog) LyricsDialog(onDismiss = { isShowingLyricsDialog = false })
 
+        // On portrait Ravyn has its own UP NEXT action. The legacy queue
+        // button bar should be completely hidden, not reserve 64dp of space.
         val playerBottomSheetState = rememberBottomSheetState(
-            dismissedBound = 64.dp + horizontalBottomPaddingValues.calculateBottomPadding(),
+            dismissedBound = if (isLandscape)
+                64.dp + horizontalBottomPaddingValues.calculateBottomPadding() else 0.dp,
             expandedBound = layoutState.expandedBound
         )
 
@@ -370,6 +388,7 @@ fun Player(
             )
             .padding(bottom = playerBottomSheetState.collapsedBound)
 
+        var artworkAccent by remember(mediaItem?.mediaId) { mutableStateOf(colorPalette.accent) }
         val thumbnailContent: @Composable (modifier: Modifier) -> Unit = { innerModifier ->
             Pip(
                 numerator = 1,
@@ -384,6 +403,10 @@ fun Player(
                     onOpenDialog = { isShowingLyricsDialog = true },
                     likedAt = likedAt,
                     setLikedAt = { likedAt = it },
+                    onArtworkAccent = { songId, color ->
+                        // Ignore stale callbacks when another song starts loading.
+                        if (mediaItem?.mediaId == songId) artworkAccent = color
+                    },
                     modifier = Modifier
                         .nestedScroll(layoutState.preUpPostDownNestedScrollConnection)
                         .pinchToToggle(
@@ -418,6 +441,9 @@ fun Player(
             )
         }
 
+        var audioDialogOpen by rememberSaveable { mutableStateOf(false) }
+        var boostDialogOpen by rememberSaveable { mutableStateOf(false) }
+
         if (isLandscape) Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = containerModifier.padding(top = 32.dp)
@@ -437,26 +463,39 @@ fun Player(
                     .fillMaxHeight()
                     .weight(1f)
             )
-        } else Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = containerModifier.padding(top = 54.dp)
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.weight(1.25f)
-            ) {
-                thumbnailContent(Modifier.padding(horizontal = 32.dp, vertical = 8.dp))
-            }
-
-            controlsContent(
-                Modifier
-                    .padding(vertical = 8.dp)
-                    .fillMaxWidth()
-                    .weight(1f)
-            )
-        }
-
-        var audioDialogOpen by rememberSaveable { mutableStateOf(false) }
+        } else RavynNowPlaying(
+            media = mediaItem?.toUiMedia(duration),
+            artworkAccent = artworkAccent,
+            topInset = windowInsets.only(WindowInsetsSides.Top).asPaddingValues().calculateTopPadding(),
+            binder = binder,
+            title = metadata?.title?.toString().orEmpty(),
+            artist = metadata?.artist?.toString().orEmpty(),
+            likedAt = likedAt,
+            setLikedAt = { likedAt = it },
+            shouldBePlaying = shouldBePlaying,
+            position = position,
+            onCollapse = layoutState::collapseSoft,
+            onMore = {
+                val item = mediaItem
+                val service = binder
+                if (item != null && service != null) menuState.display {
+                    PlayerMenu(
+                        onDismiss = menuState::hide,
+                        mediaItem = item,
+                        binder = service,
+                        onShowSpeedDialog = { audioDialogOpen = true },
+                        onShowNormalizationDialog = {
+                            boostDialogOpen = true
+                        }.takeIf { volumeNormalization }
+                    )
+                }
+            },
+            onShowLyrics = { isShowingLyrics = true },
+            onShowQueue = playerBottomSheetState::expandSoft,
+            thumbnailContent = thumbnailContent,
+            // Draw the artwork-derived backdrop behind the system status bar.
+            modifier = Modifier.clip(shape).fillMaxSize()
+        )
 
         if (audioDialogOpen) SliderDialog(
             onDismiss = { audioDialogOpen = false },
@@ -499,8 +538,6 @@ fun Player(
                 )
             }
         }
-
-        var boostDialogOpen by rememberSaveable { mutableStateOf(false) }
 
         if (boostDialogOpen) {
             fun submit(state: Float) = transaction {
@@ -551,20 +588,15 @@ fun Player(
         if (binder != null) Queue(
             layoutState = playerBottomSheetState,
             binder = binder,
-            beforeContent = {
-                if (playerLayout == PlayerPreferences.PlayerLayout.New) IconButton(
-                    onClick = { trackLoopEnabled = !trackLoopEnabled },
-                    icon = R.drawable.infinite,
-                    enabled = trackLoopEnabled,
-                    modifier = Modifier
-                        .padding(vertical = 8.dp)
-                        .size(20.dp)
-                ) else Spacer(modifier = Modifier.width(20.dp))
-            },
+            collapsedBarColor = if (isLandscape) null else colorPalette.background1,
+            collapsedIconColor = if (isLandscape) null else colorPalette.accent,
+            // Track repeat already has a working control in RavynNowPlaying.
+            // The old infinity shortcut disabled itself when repeat was off.
+            beforeContent = { Spacer(modifier = Modifier.width(20.dp)) },
             afterContent = {
                 IconButton(
                     icon = R.drawable.ellipsis_horizontal,
-                    color = colorPalette.text,
+                    color = if (isLandscape) colorPalette.text else Color.White,
                     onClick = {
                         mediaItem?.let {
                             menuState.display {

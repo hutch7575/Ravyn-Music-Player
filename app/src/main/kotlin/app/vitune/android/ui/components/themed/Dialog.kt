@@ -219,16 +219,16 @@ fun DefaultDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
-    horizontalPadding: Dp = 24.dp,
+    horizontalPadding: Dp = 20.dp,
     content: @Composable ColumnScope.() -> Unit
 ) = Dialog(onDismissRequest = onDismiss) {
     Column(
         horizontalAlignment = horizontalAlignment,
         modifier = modifier
-            .padding(all = 48.dp)
+            .padding(all = 24.dp)
             .background(
                 color = LocalAppearance.current.colorPalette.background1,
-                shape = 8.dp.roundedShape
+                shape = 12.dp.roundedShape
             )
             .padding(
                 horizontal = horizontalPadding,
@@ -255,10 +255,10 @@ fun <T> ValueSelectorDialog(
         values = values,
         onValueSelect = onValueSelect,
         modifier = modifier
-            .padding(all = 48.dp)
+            .padding(all = 24.dp)
             .background(
                 color = LocalAppearance.current.colorPalette.background1,
-                shape = 8.dp.roundedShape
+                shape = 12.dp.roundedShape
             )
             .padding(vertical = 16.dp),
         valueText = valueText
@@ -398,8 +398,8 @@ fun SliderDialog(
 
     Column(
         modifier = modifier
-            .padding(all = 48.dp)
-            .background(color = colorPalette.background1, shape = 8.dp.roundedShape)
+            .padding(all = 24.dp)
+            .background(color = colorPalette.background1, shape = 12.dp.roundedShape)
             .padding(vertical = 16.dp)
     ) {
         BasicText(
