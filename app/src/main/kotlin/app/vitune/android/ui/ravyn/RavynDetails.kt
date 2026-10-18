@@ -87,8 +87,8 @@ fun RavynCollectionDetail(
                             listOf(accent.copy(alpha = 0.20f), RavynStyle.background)
                         )
                     ).padding(horizontal = 18.dp, vertical = 18.dp)) {
-                    RavynArtwork(artwork, Modifier.size(212.dp), round = circleArt)
-                    Spacer(Modifier.height(20.dp))
+                    RavynArtwork(artwork, Modifier.size(195.dp), round = circleArt)
+                    Spacer(Modifier.height(14.dp))
                     RavynLabel(title, 25, bold = true, lines = 2)
                     if (!artist.isNullOrBlank()) {
                         Spacer(Modifier.height(8.dp))
@@ -102,7 +102,7 @@ fun RavynCollectionDetail(
                         Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier
-                                .background(RavynStyle.panel, RoundedCornerShape(24.dp))
+                                .background(RavynStyle.panel, RoundedCornerShape(4.dp))
                                 .clickable(onClick = onShuffle)
                                 .padding(horizontal = 18.dp, vertical = 13.dp)) {
                             Image(painterResource(R.drawable.shuffle), null,

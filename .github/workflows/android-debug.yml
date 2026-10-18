@@ -10,6 +10,7 @@ on:
       - feat/ravyn-dark-album-ui
       - feat/ravyn-ui-from-scratch
       - master
+      - release/ravyn-v2-rebuild
   workflow_dispatch:
 
 jobs:

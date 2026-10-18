@@ -39,7 +39,7 @@ class RavynNavigationState {
 
 val LocalRavynNavigation = staticCompositionLocalOf { RavynNavigationState() }
 
-val RavynBottomNavigationHeight = 54.dp
+val RavynBottomNavigationHeight = 52.dp
 
 @Composable
 fun RavynBottomNavigation(modifier: Modifier = Modifier) {
@@ -52,7 +52,7 @@ fun RavynBottomNavigation(modifier: Modifier = Modifier) {
     ) {
         RavynNavigationDestination("Home", R.drawable.home, selected == 0,
             Modifier.weight(1f)) { navigation.navigate(0) }
-        RavynNavigationDestination("Search", R.drawable.search, false,
+        RavynNavigationDestination("Search", R.drawable.search, selected == 1,
             Modifier.weight(1f)) { navigation.navigate(1) }
         RavynNavigationDestination("Your Library", R.drawable.library, selected == 2,
             Modifier.weight(1f)) { navigation.navigate(2) }

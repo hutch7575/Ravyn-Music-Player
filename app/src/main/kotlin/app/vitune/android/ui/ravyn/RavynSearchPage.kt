@@ -133,19 +133,19 @@ fun RavynSearchPage(
                     }
                 },
                 modifier = Modifier.weight(1f)
-                    .background(RavynStyle.panel, RoundedCornerShape(12.dp))
+                    .background(RavynStyle.panel, RoundedCornerShape(3.dp))
                     .padding(horizontal = 16.dp, vertical = 15.dp)
             )
             RavynIcon(R.drawable.close, "Clear search", { query = TextFieldValue("") },
                 tint = RavynStyle.secondary)
         }
-        Spacer(Modifier.height(15.dp))
+        Spacer(Modifier.height(9.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp),
             modifier = Modifier.padding(horizontal = 18.dp)) {
             RavynPill("Online", source == 0) { source = 0 }
             RavynPill("Your Library", source == 1) { source = 1 }
         }
-        Spacer(Modifier.height(19.dp))
+        Spacer(Modifier.height(13.dp))
         AnimatedContent(targetState = source,
             transitionSpec = { ContentTransform(fadeIn(tween(190)),
                 fadeOut(tween(90)), sizeTransform = null) },
