@@ -12,6 +12,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -165,42 +166,51 @@ internal fun RavynPill(value: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 internal fun RavynSquareTile(
     image: String?, name: String, subtitle: String? = null,
-    width: Dp = 130.dp, onClick: () -> Unit
+    width: Dp = 130.dp, onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(5.dp),
-        modifier = Modifier.width(width).clickable(onClick = onClick)
+        modifier = Modifier.width(width).combinedClickable(
+            onClick = onClick, onLongClick = onLongClick
+        )
     ) {
         RavynArtwork(image, Modifier.size(width))
-        RavynLabel(name, 12, bold = true, lines = 2)
+        RavynLabel(name, 12, bold = true, lines = 1)
         if (!subtitle.isNullOrBlank())
             RavynLabel(subtitle, 10, RavynStyle.secondary)
     }
 }
 
 @Composable
-internal fun RavynArtistTile(image: String?, name: String, onClick: () -> Unit) {
+internal fun RavynArtistTile(
+    image: String?, name: String, onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(7.dp),
-        modifier = Modifier.width(72.dp).clickable(onClick = onClick)
+        modifier = Modifier.width(72.dp).combinedClickable(
+            onClick = onClick, onLongClick = onLongClick
+        )
     ) {
         RavynArtwork(image, Modifier.size(62.dp), round = true)
-        RavynLabel(name, 10, lines = 2)
+        RavynLabel(name, 10, lines = 1)
     }
 }
 
 @Composable
 internal fun RavynTrackRow(
     song: Song, onClick: () -> Unit,
-    onLike: (() -> Unit)? = null, showHeart: Boolean = true
+    onLike: (() -> Unit)? = null, showHeart: Boolean = true,
+    onLongClick: (() -> Unit)? = null
 ) {
     val accent = ravynAccent()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.fillMaxWidth().height(61.dp)
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         RavynArtwork(song.thumbnailUrl, Modifier.size(45.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -256,7 +266,8 @@ internal fun RavynHomeCategoryChip() {
 
 @Composable
 internal fun RavynRecentTile(
-    artwork: String?, title: String, artist: String?, onClick: () -> Unit
+    artwork: String?, title: String, artist: String?, onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(7.dp),
@@ -264,7 +275,8 @@ internal fun RavynRecentTile(
         modifier = Modifier.width(160.dp).height(58.dp)
             .clip(RoundedCornerShape(5.dp))
             .background(RavynStyle.panel)
-            .clickable(onClick = onClick).padding(5.dp)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(5.dp)
     ) {
         RavynArtwork(artwork, Modifier.size(48.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
