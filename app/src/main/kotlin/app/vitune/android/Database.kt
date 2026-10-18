@@ -599,6 +599,9 @@ interface DatabaseAccessor {
     @Query("UPDATE Song SET blacklisted = NOT blacklisted WHERE id = :songId")
     fun toggleBlacklist(songId: String)
 
+    @Query("UPDATE Song SET blacklisted = 1 WHERE id = :songId")
+    fun blacklistSong(songId: String)
+
     suspend fun filterBlacklistedSongs(songs: List<MediaItem>): List<MediaItem> {
         val blacklistedIds = blacklistedIds()
         return songs.filter { it.mediaId !in blacklistedIds }
