@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,7 +70,8 @@ fun RavynNowPlaying(
     position: Long,
     onCollapse: () -> Unit,
     onMore: () -> Unit,
-    onShowLyrics: () -> Unit,
+    isShowingLyrics: Boolean,
+    onToggleLyrics: () -> Unit,
     onShowQueue: () -> Unit,
     albumTitle: String?,
     onArtistClick: (() -> Unit)?,
@@ -234,8 +236,13 @@ fun RavynNowPlaying(
         }
         Spacer(Modifier.height(if (compact) 7.dp else 15.dp))
 
-        RavynPlayerCard("LYRICS", R.drawable.musical_notes,
-            accent, highlighted = true, onShowLyrics)
+        RavynPlayerCard(
+            label = stringResource(if (isShowingLyrics) R.string.hide_lyrics_action else R.string.lyrics_action),
+            icon = R.drawable.musical_notes,
+            accent = accent,
+            highlighted = isShowingLyrics,
+            onClick = onToggleLyrics
+        )
         Spacer(Modifier.height(if (compact) 3.dp else 5.dp))
         RavynPlayerCard("UP NEXT", R.drawable.enqueue,
             accent, highlighted = false, onShowQueue)

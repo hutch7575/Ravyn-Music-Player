@@ -23,20 +23,34 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.TransferListener
+import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.CacheSpan
 import app.vitune.android.Database
 import app.vitune.android.LocalPlayerServiceBinder
 import app.vitune.android.R
 import app.vitune.android.models.Format
+import app.vitune.android.models.Song
 import app.vitune.android.service.LOCAL_KEY_PREFIX
 import app.vitune.android.service.PlayerService
 import app.vitune.android.service.PrecacheService
 import app.vitune.android.service.downloadState
 import app.vitune.android.ui.components.themed.CircularProgressIndicator
 import app.vitune.android.ui.components.themed.HeaderIconButton
+import app.vitune.core.data.enums.SongSortBy
+import app.vitune.core.data.enums.SortOrder
 import app.vitune.core.ui.LocalAppearance
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
@@ -102,6 +116,22 @@ fun isCached(
         } ?: false
     }
 }
+
+@OptIn(UnstableApi::class)
+@kotlin.OptIn(ExperimentalCoroutinesApi::class)
+fun PlayerService.Binder.cachedSongs(sortBy: SongSortBy, sortOrder: SortOrder): Flow<List<Song>> =
+    Database.songsWithContentLength(sortBy, sortOrder).flatMapLatest { candidates ->
+        callbackFlow {
+            val listener = object : Cache.Listener {
+                override fun onSpanAdded(cache: Cache, span: CacheSpan) { trySend(Unit) }
+                override fun onSpanRemoved(cache: Cache, span: CacheSpan) { trySend(Unit) }
+                override fun onSpanTouched(cache: Cache, oldSpan: CacheSpan, newSpan: CacheSpan) = Unit
+            }
+            candidates.forEach { cache.addListener(it.song.id, listener) }
+            trySend(Unit)
+            awaitClose { candidates.forEach { cache.removeListener(it.song.id, listener) } }
+        }.conflate().map { candidates.filter(::isCached).map { it.song } }
+    }.distinctUntilChanged().flowOn(Dispatchers.IO)
 
 @OptIn(UnstableApi::class)
 class ConditionalCacheDataSourceFactory(

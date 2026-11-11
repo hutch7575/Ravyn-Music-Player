@@ -120,7 +120,7 @@ private const val UPDATE_DELAY = 120L
 fun Lyrics(
     mediaId: String,
     isDisplayed: Boolean,
-    onDismiss: () -> Unit,
+    onDismiss: (() -> Unit)?,
     mediaMetadataProvider: () -> MediaMetadata,
     durationProvider: () -> Long,
     ensureSongInserted: () -> Unit,
@@ -153,7 +153,7 @@ fun Lyrics(
 
     val pip = isInPip()
 
-    var lyrics by remember { mutableStateOf<Lyrics?>(null) }
+    var lyrics by remember(mediaId) { mutableStateOf<Lyrics?>(null) }
 
     val showSynchronizedLyrics = remember(shouldShowSynchronizedLyrics, lyrics) {
         shouldShowSynchronizedLyrics && lyrics?.synced?.isBlank() != true
@@ -161,11 +161,12 @@ fun Lyrics(
 
     var editing by remember(mediaId, shouldShowSynchronizedLyrics) { mutableStateOf(false) }
     var picking by remember(mediaId, shouldShowSynchronizedLyrics) { mutableStateOf(false) }
-    var error by remember(mediaId, shouldShowSynchronizedLyrics) { mutableStateOf(false) }
+    var loadFailed by remember(mediaId, shouldShowSynchronizedLyrics) { mutableStateOf(false) }
 
     val text = remember(lyrics, showSynchronizedLyrics) {
         if (showSynchronizedLyrics) lyrics?.synced else lyrics?.fixed
     }
+    val error = loadFailed || text?.isBlank() == true
     var invalidLrc by remember(text) { mutableStateOf(false) }
 
     DisposableEffect(shouldKeepScreenAwake) {
@@ -209,7 +210,7 @@ fun Lyrics(
                             }
 
                             lyrics = null
-                            error = false
+                            loadFailed = false
 
                             val fixed = currentLyrics?.fixed ?: Innertube
                                 .lyrics(NextBody(videoId = mediaId))
@@ -253,15 +254,12 @@ fun Lyrics(
                                 }
                             }
                         }
-
-                        error =
-                            (shouldShowSynchronizedLyrics && lyrics?.synced?.isBlank() == true) ||
-                            (!shouldShowSynchronizedLyrics && lyrics?.fixed?.isBlank() == true)
                     }
             }
         }.exceptionOrNull()?.let {
             if (it is CancellationException) throw it
-            else it.printStackTrace()
+            loadFailed = true
+            it.printStackTrace()
         }
     }
 
@@ -329,7 +327,7 @@ fun Lyrics(
     BoxWithConstraints(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .then(if (ravynStyle) Modifier else Modifier.pointerInput(Unit) {
+            .then(if (onDismiss == null) Modifier else Modifier.pointerInput(onDismiss) {
                 detectTapGestures(onTap = { onDismiss() })
             })
             .fillMaxSize()
@@ -362,7 +360,7 @@ fun Lyrics(
         }
 
         AnimatedVisibility(
-            visible = !text.isNullOrBlank() && !error && invalidLrc && shouldShowSynchronizedLyrics,
+            visible = !text.isNullOrBlank() && !error && invalidLrc && showSynchronizedLyrics,
             enter = slideInVertically { -it },
             exit = slideOutVertically { -it },
             modifier = Modifier.align(Alignment.TopCenter)
