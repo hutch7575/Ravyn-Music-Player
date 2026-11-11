@@ -491,7 +491,8 @@ fun Player(
                     )
                 }
             },
-            onShowLyrics = { isShowingLyrics = true },
+            isShowingLyrics = isShowingLyrics,
+            onToggleLyrics = { isShowingLyrics = !isShowingLyrics },
             onShowQueue = playerBottomSheetState::expandSoft,
             albumTitle = metadata?.albumTitle?.toString(),
             onArtistClick = mediaItem?.mediaMetadata?.extras?.songBundle

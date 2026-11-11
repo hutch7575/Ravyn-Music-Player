@@ -166,8 +166,8 @@ fun RavynRoot(
             .collect { local = it }
     }
     LaunchedEffect(Unit) {
-        Database.events().collect { events ->
-            recent = events.map { it.song }.distinctBy { it.id }.take(24)
+        Database.history(size = 24).collect {
+            recent = it
             historyLoaded = true
         }
     }

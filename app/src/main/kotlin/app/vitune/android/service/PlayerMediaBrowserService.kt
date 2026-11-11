@@ -28,8 +28,6 @@ import app.vitune.android.utils.intent
 import app.vitune.core.data.utils.CallValidator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.cancellable
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -301,15 +299,7 @@ class PlayerMediaBrowserService : MediaBrowserService(), ServiceConnection {
                         val duration = DataPreferences.topListPeriod.duration
                         val length = DataPreferences.topListLength
 
-                        val flow = if (duration != null) Database.trending(
-                            limit = length,
-                            period = duration.inWholeMilliseconds
-                        ) else Database
-                            .songsByPlayTimeDesc(limit = length)
-                            .distinctUntilChanged()
-                            .cancellable()
-
-                        flow.first()
+                        Database.topSongs(length, duration?.inWholeMilliseconds).first()
                     }
 
                     MediaId.LOCAL ->

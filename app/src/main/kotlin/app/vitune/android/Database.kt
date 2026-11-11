@@ -252,12 +252,8 @@ interface DatabaseAccessor {
         """
         SELECT Song.* FROM Event
         JOIN Song ON Song.id = Event.songId
-        WHERE Event.ROWID in (
-	        SELECT max(Event.ROWID)
-	        FROM Event
-	        GROUP BY songId
-        )
-        ORDER BY timestamp DESC
+        GROUP BY Event.songId
+        ORDER BY MAX(Event.timestamp) DESC, Song.id
         LIMIT :size
         """
     )
@@ -664,19 +660,24 @@ interface DatabaseAccessor {
         """
         SELECT Song.* FROM Event
         JOIN Song ON Song.id = songId
-        WHERE (:now - Event.timestamp) <= :period AND
-        Song.id NOT LIKE '$LOCAL_KEY_PREFIX%'
+        WHERE Event.timestamp >= strftime('%s', 'now') * 1000 - :period
         GROUP BY songId
-        ORDER BY SUM(playTime) DESC
+        HAVING SUM(playTime) > 0
+        ORDER BY SUM(playTime) DESC, Song.id
         LIMIT :limit
         """
     )
     @RewriteQueriesToDropUnusedColumns
-    fun trending(
-        limit: Int = 3,
-        now: Long = System.currentTimeMillis(),
+    fun topSongsInPeriod(
+        limit: Int,
         period: Long
     ): Flow<List<Song>>
+
+    @Query("SELECT * FROM Song WHERE totalPlayTimeMs > 0 ORDER BY totalPlayTimeMs DESC, id LIMIT :limit")
+    fun topSongsAllTime(limit: Int): Flow<List<Song>>
+
+    fun topSongs(limit: Int, period: Long?) =
+        if (period == null) topSongsAllTime(limit) else topSongsInPeriod(limit = limit, period = period)
 
     @Transaction
     @Query("SELECT * FROM Event ORDER BY timestamp DESC")
