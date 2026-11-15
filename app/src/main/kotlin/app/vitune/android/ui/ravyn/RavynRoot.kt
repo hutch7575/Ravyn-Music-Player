@@ -1,5 +1,6 @@
 package app.vitune.android.ui.ravyn
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.animateColorAsState
@@ -286,7 +287,7 @@ fun RavynRoot(
                 .padding(start = 17.dp, end = 7.dp)
         ) {
             RavynLabel(
-                if (tab == 1) "Search" else if (tab == 2) "Your Library" else "Ravyn",
+                if (tab == 1) "Search" else if (tab == 2) "Your Library" else stringResource(R.string.product_name),
                 size = 21, bold = true, modifier = Modifier.weight(1f)
             )
             RavynIcon(R.drawable.search, "Search", {

@@ -1,1 +1,1 @@
-A classic Android-inspired fork of ViTune
+Play local music and stream from YouTube Music on Android.

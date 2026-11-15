@@ -41,7 +41,7 @@ object AppUpdateInstaller {
             runCatching {
                 val source = URL(url)
                 require(source.protocol == "https" && source.host == "github.com") {
-                    "Updates must come from the official Ravyn GitHub releases"
+                    "Updates must come from the official Music Player GitHub releases"
                 }
                 require(source.path.startsWith("/hutch7575/Ravyn-Music-Player/releases/download/")) {
                     "Unrecognized update source"

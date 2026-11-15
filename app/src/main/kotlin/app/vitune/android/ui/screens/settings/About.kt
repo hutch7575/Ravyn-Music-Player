@@ -122,7 +122,7 @@ class VersionCheckWorker(
                 this
                     .setSmallIcon(R.drawable.download)
                     .setContentTitle(getString(R.string.new_version_available))
-                    .setContentText("Open Ravyn to download the new version")
+                    .setContentText("Open Music Player to download the new version")
                     .also {
                         it.setContentIntent(
                             pendingIntent(Intent(applicationContext, MainActivity::class.java))
@@ -166,7 +166,7 @@ private suspend fun Version.getNewerVersion(): Result<Release?>? = GitHub.releas
 @Route
 @Composable
 fun About() = SettingsCategoryScreen(
-    title = "Ravyn",
+    title = stringResource(R.string.product_name),
     description = "Version ${BuildConfig.VERSION_NAME} · Based on ViTune · GPL-3.0"
 ) {
     val [_, typography] = LocalAppearance.current
@@ -190,7 +190,7 @@ fun About() = SettingsCategoryScreen(
     SettingsGroup(title = "Updates") {
         SettingsEntry(
             title = "Check for updates",
-            text = "Check Ravyn releases · ${BuildConfig.VERSION_NAME}",
+            text = "Check Music Player releases · ${BuildConfig.VERSION_NAME}",
             onClick = {
                 checkingUpdates = true
                 downloadError = null
@@ -223,11 +223,11 @@ fun About() = SettingsCategoryScreen(
         )
         SettingsEntry(
             title = stringResource(R.string.report_bug),
-            text = "Report an issue with Ravyn",
+            text = "Report an issue with Music Player",
             onClick = { uriHandler.openUri("https://github.com/$REPO_OWNER/$REPO_NAME/issues/new") }
         )
         SettingsDescription(
-            text = "Ravyn is based on ViTune and retains the work and licenses " +
+            text = "Music Player is based on ViTune and retains the work and licenses " +
                 "of its original contributors. Not affiliated with Google or YouTube."
         )
     }
@@ -245,7 +245,7 @@ fun About() = SettingsCategoryScreen(
         val release = newest?.getOrNull()
         if (release != null) {
             BasicText(
-                text = "Ravyn ${release.tag} is available",
+                text = "Music Player ${release.tag} is available",
                 style = typography.m.bold.center,
                 modifier = Modifier.padding(16.dp)
             )
@@ -298,7 +298,7 @@ fun About() = SettingsCategoryScreen(
             )
         } else {
             BasicText(
-                text = "You're up to date. No newer Ravyn release is available yet.",
+                text = "You're up to date. No newer Music Player release is available yet.",
                 style = typography.xs.center,
                 modifier = Modifier.padding(16.dp)
             )

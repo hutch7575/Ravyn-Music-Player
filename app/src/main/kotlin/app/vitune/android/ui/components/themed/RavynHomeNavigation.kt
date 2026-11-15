@@ -1,5 +1,6 @@
 package app.vitune.android.ui.components.themed
 
+import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
@@ -76,7 +77,7 @@ fun RavynHomeNavigation(
     onDrawerSettingsClick: () -> Unit = onSettingsClick,
     onHistoryClick: (() -> Unit)? = null,
     showDrawer: Boolean = true,
-    pageTitle: String = "Ravyn",
+    pageTitle: String = stringResource(R.string.product_name),
     content: @Composable () -> Unit
 ) {
     val palette = LocalAppearance.current.colorPalette
@@ -211,7 +212,7 @@ fun RavynHomeNavigation(
                         .padding(top = topInsets.calculateTopPadding() + 35.dp,
                             start = 23.dp, bottom = 30.dp)
                 ) {
-                    BasicText("Ravyn", style = TextStyle(
+                    BasicText(stringResource(R.string.product_name), style = TextStyle(
                         fontSize = 31.sp, fontWeight = FontWeight.Bold, color = palette.text
                     ))
                     Spacer(Modifier.height(5.dp))

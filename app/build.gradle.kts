@@ -70,7 +70,7 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-DEBUG"
-            manifestPlaceholders["appName"] = "Ravyn Debug"
+            manifestPlaceholders["appName"] = "Music Player Debug"
         }
 
         release {
@@ -80,7 +80,7 @@ android {
             versionNameSuffix = "-RELEASE"
             isMinifyEnabled = true
             isShrinkResources = true
-            manifestPlaceholders["appName"] = "Ravyn"
+            manifestPlaceholders["appName"] = "@string/product_name"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -93,7 +93,7 @@ android {
 
             applicationIdSuffix = ".nightly"
             versionNameSuffix = "-NIGHTLY"
-            manifestPlaceholders["appName"] = "Ravyn Nightly"
+            manifestPlaceholders["appName"] = "Music Player Nightly"
             signingConfig = signingConfigs.findByName("ci")
         }
     }

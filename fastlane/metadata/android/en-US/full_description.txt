@@ -1,3 +1,3 @@
-ViTune Classic is a work-in-progress fork of ViTune, inspired by the classic Android Material Design interface of 2015–2017.
+Music Player plays local audio files and streams songs from YouTube Music. Browse your library, save playlists, read lyrics, and see what you listen to most. Fully cached tracks are available offline.
 
-App details and feature information will be updated as development progresses.
+Music Player is open source and based on ViTune.
