@@ -97,7 +97,7 @@ fun DatabaseSettings() = with(DataPreferences) {
                         while (it.moveToNext()) columns += it.getString(1)
                     }
                     require("id" in columns && "likedAt" in columns) {
-                        "The selected file is not a compatible ViTune library"
+                        "The selected file is not a compatible Music Player library"
                     }
                 }
 
@@ -190,7 +190,7 @@ fun DatabaseSettings() = with(DataPreferences) {
                     val dateFormat = SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault())
 
                     try {
-                        backupLauncher.launch("ViTune_backup_${dateFormat.format(Date())}.db")
+                        backupLauncher.launch("Music_Player_backup_${dateFormat.format(Date())}.db")
                     } catch (_: ActivityNotFoundException) {
                         context.toast(errorMsg)
                     }

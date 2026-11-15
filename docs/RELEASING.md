@@ -1,6 +1,6 @@
-# Publishing Ravyn APK releases
+# Publishing Music Player APK releases
 
-Ravyn checks [GitHub Releases](https://github.com/hutch7575/Ravyn-Music-Player/releases) for newer versions and can download a **signed universal APK** from within the app. Android asks users to approve installation and enforces update signing compatibility.
+Music Player checks [GitHub Releases](https://github.com/hutch7575/Ravyn-Music-Player/releases) for newer versions and can download a **signed universal APK** from within the app. Android asks users to approve installation and enforces update signing compatibility.
 
 ## Before the first release
 
@@ -26,10 +26,10 @@ On Windows PowerShell, obtain base64 with `[Convert]::ToBase64String([IO.File]::
 
 Merge the tested changes to `master`. In **GitHub → Releases → Draft a new release**:
 
-1. Select **Choose a tag → v1.0.0 → Create new tag on publish**, targeting `master`.
-2. Enter title **Ravyn v1.0.0** and describe the release.
-3. Click **Publish release**. Publishing starts the [release workflow](../.github/workflows/android-release.yml), which builds a signed **universal** APK and attaches it to that release as `Ravyn-v1.0.0.apk` after it succeeds.
-4. Wait for the workflow to complete successfully before distributing the APK. If the build fails, fix the workflow on `master`, open **Actions → Signed Ravyn release → Run workflow**, select the default `master` branch, and enter the existing release tag (such as `v1.0.0`). This rebuilds the same tagged source and uploads/replaces the release APK without moving the tag.
+1. Select **Choose a tag → v2.0.3 → Create new tag on publish**, targeting `master`.
+2. Enter title **Music Player v2.0.3** and describe the release.
+3. Click **Publish release**. Publishing starts the [release workflow](../.github/workflows/android-release.yml), which builds a signed **universal** APK and attaches it to that release as `Music-Player-v2.0.3.apk` after it succeeds.
+4. Wait for the workflow to complete successfully before distributing the APK. If the build fails, fix the workflow on `master`, open **Actions → Signed Music Player release → Run workflow**, select the default `master` branch, and enter the existing release tag (such as `v2.0.3`). This rebuilds the same tagged source and uploads/replaces the release APK without moving the tag.
 
 The in-app updater only selects production APK assets, not debug/nightly artifacts. The upload step checks that the selected APK contains native libraries for both supported ABIs.
 
@@ -37,8 +37,8 @@ Use a new semantic version for every subsequent release. The workflow derives `v
 
 ## Important
 
-- Production Android application ID: `app.ravyn.music` (changed before the first Ravyn release).
+- Production Android application ID: `app.ravyn.music` (shared with previous Ravyn releases).
 - Debug ID: `app.ravyn.music.debug`. Debug builds use different signing keys and cannot be updated in place with production APKs.
-- Existing `app.vitune.classic` and `app.vitune.classic.debug` installs remain separate. Export a library backup from the previous app, install Ravyn, and import the backup.
+- Existing `app.vitune.classic` and `app.vitune.classic.debug` installs remain separate. Export a library backup from the previous app, install Music Player, and import the backup.
 - Keep using the **same release signing keystore** for every future production version.
 - Test backup/restore, favourites and playback on a device before tagging a release.

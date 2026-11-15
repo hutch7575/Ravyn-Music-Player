@@ -71,7 +71,7 @@ fun Scaffold(
             showDrawer = key == "home",
             pageTitle = when (key) {
                 "settings" -> "Settings"
-                "home" -> "Ravyn"
+                "home" -> stringResource(R.string.product_name)
                 "search" -> "Search"
                 "searchresult" -> "Results"
                 "album" -> "Album"

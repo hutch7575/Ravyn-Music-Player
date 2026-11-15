@@ -1,5 +1,6 @@
 package app.vitune.android.ui.ravyn
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -70,7 +71,7 @@ fun RavynCollectionDetail(
             modifier = Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 9.dp)
         ) {
             RavynIcon(R.drawable.chevron_back, "Back", onBack)
-            RavynLabel("RAVYN", 12, RavynStyle.secondary,
+            RavynLabel(stringResource(R.string.product_name), 12, RavynStyle.secondary,
                 bold = true, modifier = Modifier.weight(1f))
             if (onBookmark != null && bookmarked != null) RavynIcon(
                 if (bookmarked) R.drawable.bookmark else R.drawable.bookmark_outline,
