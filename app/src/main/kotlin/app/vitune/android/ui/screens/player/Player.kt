@@ -109,6 +109,7 @@ import app.vitune.core.ui.utils.roundedShape
 import app.vitune.core.ui.utils.songBundle
 import app.vitune.providers.innertube.models.NavigationEndpoint
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.absoluteValue
 
@@ -145,7 +146,12 @@ fun Player(
             length > 0L && length != C.LENGTH_UNSET.toLong() && binder.cache.isCached(id, 0L, length)
         }.getOrDefault(false)
     }
-    LaunchedEffect(binder, mediaItem?.mediaId) { refreshCacheStatus() }
+    LaunchedEffect(binder, mediaItem?.mediaId) {
+        while (true) {
+            refreshCacheStatus()
+            delay(5_000L)
+        }
+    }
     var isBuffering by remember(binder) {
         mutableStateOf(binder?.player?.playbackState == Player.STATE_BUFFERING)
     }
@@ -558,6 +564,8 @@ fun Player(
             likedAt = likedAt,
             setLikedAt = { likedAt = it },
             shouldBePlaying = shouldBePlaying,
+            isBuffering = isBuffering,
+            isCachedOffline = isCachedOffline,
             position = position,
             onCollapse = layoutState::collapseSoft,
             onMore = {
