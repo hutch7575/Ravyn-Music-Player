@@ -290,14 +290,7 @@ fun Player(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    AnimatedVisibility(visible = isCachedOffline) {
-                        BasicText(
-                            text = "AVAILABLE OFFLINE",
-                            style = typography.xs.secondary,
-                            maxLines = 1
-                        )
-                    }
-                    AnimatedVisibility(visible = metadata?.artist != null && !isCachedOffline) {
+                    AnimatedVisibility(visible = metadata?.artist != null) {
                         AnimatedContent(
                             targetState = metadata?.artist?.toString().orEmpty(),
                             label = "",
@@ -313,6 +306,14 @@ fun Player(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
+
+                                AnimatedVisibility(visible = isCachedOffline) {
+                                    BasicText(
+                                        text = "· OFFLINE",
+                                        style = typography.xs.secondary,
+                                        maxLines = 1
+                                    )
+                                }
 
                                 AnimatedVisibility(visible = extras?.explicit == true) {
                                     Image(
