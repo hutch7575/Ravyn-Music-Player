@@ -227,7 +227,13 @@ fun RavynNowPlaying(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                AnimatedContent(targetState = shouldBePlaying,
+                if (isBuffering && shouldBePlaying) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(29.dp),
+                        color = Color(0xFF111315),
+                        strokeWidth = 2.5.dp
+                    )
+                } else AnimatedContent(targetState = shouldBePlaying,
                     transitionSpec = {
                         ContentTransform(
                             fadeIn(tween(170)) + scaleIn(
