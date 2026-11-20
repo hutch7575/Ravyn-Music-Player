@@ -190,24 +190,37 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     // extractors or network connections can stall in BUFFERING indefinitely.
     private val stallHandler = Handler(Looper.getMainLooper())
     private val stallCheck = Runnable {
-        if (::player.isInitialized &&
-            player.playbackState == Player.STATE_BUFFERING &&
-            player.playWhenReady && player.currentMediaItem != null &&
-            playbackRecoveryAttempts == 0
-        ) {
-            playbackRecoveryAttempts++
-            val id = player.currentMediaItem?.mediaId
-            Log.w(TAG, "Playback buffering > 25s: attempting one recovery for $id")
-            if (id?.startsWith(LOCAL_KEY_PREFIX) != true) streamUriCache.clear()
-            player.prepare()
-            player.play()
+        if (!::player.isInitialized ||
+            player.playbackState != Player.STATE_BUFFERING ||
+            !player.playWhenReady || player.currentMediaItem == null
+        ) return@Runnable
+
+        val id = player.currentMediaItem?.mediaId ?: return@Runnable
+        if (playbackRecoveryAttempts >= 2) {
+            // A stalled extractor may never produce an HTTP error. Stop retrying
+            // rather than leaving the UI spinning and the connection busy forever.
+            Log.e(TAG, "Playback still buffering after two recovery attempts: $id")
+            if (PlayerPreferences.skipOnError && player.hasNextMediaItem()) {
+                player.seekToNextMediaItem()
+                if (player.playbackState == Player.STATE_IDLE) player.prepare()
+                player.play()
+            } else {
+                player.pause()
+            }
+            return@Runnable
         }
+
+        playbackRecoveryAttempts++
+        Log.w(TAG, "Playback buffering > 25s: recovery $playbackRecoveryAttempts/2 for $id")
+        if (!id.startsWith(LOCAL_KEY_PREFIX)) streamUriCache.clear()
+        player.prepare()
+        player.play()
+        monitorBuffering()
     }
     private fun monitorBuffering() {
         stallHandler.removeCallbacks(stallCheck)
         if (::player.isInitialized && player.playbackState == Player.STATE_BUFFERING &&
-            player.playWhenReady && player.currentMediaItem != null &&
-            playbackRecoveryAttempts == 0
+            player.playWhenReady && player.currentMediaItem != null
         ) {
             stallHandler.postDelayed(stallCheck, 25_000L)
         }
