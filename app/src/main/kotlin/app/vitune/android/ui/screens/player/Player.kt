@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -134,6 +135,9 @@ fun Player(
         )
     }
     var shouldBePlaying by remember(binder) { mutableStateOf(binder?.player?.shouldBePlaying == true) }
+    var isBuffering by remember(binder) {
+        mutableStateOf(binder?.player?.playbackState == Player.STATE_BUFFERING)
+    }
 
     var likedAt by remember(mediaItem) {
         mutableStateOf(
@@ -164,6 +168,7 @@ fun Player(
         object : Player.Listener {
             override fun onMediaItemTransition(newMediaItem: MediaItem?, reason: Int) {
                 mediaItem = newMediaItem
+                isBuffering = player.playbackState == Player.STATE_BUFFERING
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -172,6 +177,7 @@ fun Player(
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 shouldBePlaying = player.shouldBePlaying
+                isBuffering = playbackState == Player.STATE_BUFFERING
             }
         }
     }
@@ -334,13 +340,24 @@ fun Player(
                             )
                             .clip(CircleShape)
                     ) {
-                        AnimatedPlayPauseButton(
-                            playing = shouldBePlaying,
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(horizontal = 4.dp, vertical = 8.dp)
-                                .size(23.dp)
-                        )
+                        if (isBuffering && shouldBePlaying) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(horizontal = 4.dp, vertical = 8.dp)
+                                    .size(23.dp),
+                                color = colorPalette.accent,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            AnimatedPlayPauseButton(
+                                playing = shouldBePlaying,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(horizontal = 4.dp, vertical = 8.dp)
+                                    .size(23.dp)
+                            )
+                        }
                     }
 
                     IconButton(
