@@ -58,6 +58,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.coerceAtMost
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.C
+import androidx.media3.datasource.cache.ContentMetadata
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -135,6 +137,15 @@ fun Player(
         )
     }
     var shouldBePlaying by remember(binder) { mutableStateOf(binder?.player?.shouldBePlaying == true) }
+    var isCachedOffline by remember(binder) { mutableStateOf(false) }
+    fun refreshCacheStatus() {
+        val id = binder?.player?.currentMediaItem?.mediaId
+        isCachedOffline = if (id == null || binder == null) false else runCatching {
+            val length = ContentMetadata.getContentLength(binder.cache.getContentMetadata(id))
+            length > 0L && length != C.LENGTH_UNSET.toLong() && binder.cache.isCached(id, 0L, length)
+        }.getOrDefault(false)
+    }
+    LaunchedEffect(binder, mediaItem?.mediaId) { refreshCacheStatus() }
     var isBuffering by remember(binder) {
         mutableStateOf(binder?.player?.playbackState == Player.STATE_BUFFERING)
     }
@@ -169,6 +180,7 @@ fun Player(
             override fun onMediaItemTransition(newMediaItem: MediaItem?, reason: Int) {
                 mediaItem = newMediaItem
                 isBuffering = player.playbackState == Player.STATE_BUFFERING
+                refreshCacheStatus()
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -178,6 +190,7 @@ fun Player(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 shouldBePlaying = player.shouldBePlaying
                 isBuffering = playbackState == Player.STATE_BUFFERING
+                refreshCacheStatus()
             }
         }
     }
@@ -277,7 +290,14 @@ fun Player(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    AnimatedVisibility(visible = metadata?.artist != null) {
+                    AnimatedVisibility(visible = isCachedOffline) {
+                        BasicText(
+                            text = "AVAILABLE OFFLINE",
+                            style = typography.xs.secondary,
+                            maxLines = 1
+                        )
+                    }
+                    AnimatedVisibility(visible = metadata?.artist != null && !isCachedOffline) {
                         AnimatedContent(
                             targetState = metadata?.artist?.toString().orEmpty(),
                             label = "",
