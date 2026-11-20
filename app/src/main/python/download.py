@@ -17,7 +17,11 @@ def download(quickjs_bin: str, video_id: str) -> str:
         "js_runtimes": {"quickjs": {"path": quickjs_bin}},
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(video_id, download=False)
+        # yt-dlp expects a URL here. A bare 11-character video ID can be
+        # treated as a search term or rejected, preventing uncached playback.
+        info = ydl.extract_info(
+            f"https://www.youtube.com/watch?v={video_id}", download=False
+        )
 
     if not isinstance(info, dict) or not info.get("url"):
         raise ValueError("yt-dlp returned no playable audio URL")
