@@ -485,23 +485,69 @@ fun Player(
 
         if (isLandscape) Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = containerModifier.padding(top = 32.dp)
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            modifier = Modifier
+                .clip(shape)
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color(0xFF18191A),
+                        1f to Color(0xFF111214)
+                    )
+                )
+                .padding(
+                    windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+                        .asPaddingValues()
+                )
+                .padding(horizontal = 24.dp, vertical = 12.dp)
         ) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .weight(0.66f)
-                    .padding(bottom = 16.dp)
+                    .weight(0.85f)
+                    .fillMaxHeight()
+                    .padding(vertical = 12.dp)
             ) {
-                thumbnailContent(Modifier.padding(horizontal = 16.dp))
+                thumbnailContent(Modifier.fillMaxSize().clip(RoundedCornerShape(4.dp)))
             }
 
-            controlsContent(
-                Modifier
-                    .padding(vertical = 8.dp)
-                    .fillMaxHeight()
-                    .weight(1f)
-            )
+            Column(
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            ) {
+                BasicText(
+                    text = "NOW PLAYING",
+                    style = typography.xs.semiBold.secondary
+                )
+                Spacer(Modifier.height(8.dp))
+                BasicText(
+                    text = metadata?.title?.toString().orEmpty(),
+                    style = typography.m.semiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                BasicText(
+                    text = metadata?.artist?.toString().orEmpty() +
+                        if (isCachedOffline) "  ·  OFFLINE" else "",
+                    style = typography.xs.secondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (isBuffering && shouldBePlaying) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            color = colorPalette.accent,
+                            strokeWidth = 2.dp
+                        )
+                        BasicText("Loading audio…", style = typography.xs.secondary)
+                    }
+                }
+                controlsContent(Modifier.fillMaxWidth().weight(1f))
+            }
         } else RavynNowPlaying(
             media = mediaItem?.toUiMedia(duration),
             artworkAccent = artworkAccent,
