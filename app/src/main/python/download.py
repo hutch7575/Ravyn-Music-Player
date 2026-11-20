@@ -1,16 +1,21 @@
 import yt_dlp
 import json
+import re
 
 
 def download(quickjs_bin: str, video_id: str) -> str:
     # Keep all audio-stream extraction in one call, without the unnecessary
     # four-client metadata lookup or megabytes of formatted JSON.
+    if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
+        raise ValueError("Invalid YouTube video ID")
+
     opts = {
         "format": "bestaudio",
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
         "socket_timeout": 8,
+        "extract_flat": False,
         "retries": 1,
         "extractor_retries": 1,
         "fragment_retries": 1,
