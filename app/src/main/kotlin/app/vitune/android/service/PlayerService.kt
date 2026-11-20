@@ -213,6 +213,12 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         playbackRecoveryAttempts++
         Log.w(TAG, "Playback buffering > 25s: recovery $playbackRecoveryAttempts/2 for $id")
         if (!id.startsWith(LOCAL_KEY_PREFIX)) streamUriCache.clear()
+        // prepare() alone is a no-op for an already buffering player. Force
+        // Media3 back to IDLE so it actually opens a new data source and
+        // re-runs URL extraction instead of waiting on the same stuck load.
+        val resumePosition = player.currentPosition.coerceAtLeast(0L)
+        player.stop()
+        player.seekTo(resumePosition)
         player.prepare()
         player.play()
         monitorBuffering()
