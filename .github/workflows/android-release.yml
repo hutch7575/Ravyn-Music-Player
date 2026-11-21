@@ -81,8 +81,9 @@ jobs:
             APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name 'app-release.apk' -print -quit)"
           fi
           test -n "$APK" || { echo "::error::No universal or combined release APK found"; exit 1; }
+          unzip -Z -1 "$APK" > "$RUNNER_TEMP/apk-entries.txt"
           for abi in arm64-v8a x86_64; do
-            if ! unzip -Z -1 "$APK" | grep -q "^lib/$abi/libqjs.so$"; then
+            if ! grep -q "^lib/$abi/libqjs.so$" "$RUNNER_TEMP/apk-entries.txt"; then
               echo "::error::Selected APK is missing the QuickJS extraction runtime for $abi; refusing to publish a partial release"
               exit 1
             fi

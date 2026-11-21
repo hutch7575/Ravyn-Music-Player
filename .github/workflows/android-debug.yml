@@ -15,6 +15,10 @@ on:
       - fix/ravyn-v2.0.1-playback-and-polish
   workflow_dispatch:
 
+concurrency:
+  group: android-validation-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -48,44 +52,41 @@ jobs:
       - name: Build debug APK
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleDebug --no-daemon --stacktrace
+          ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
       - name: Verify bundled extraction runtimes
         run: |
           APK="$(find app/build/outputs/apk/debug -name '*universal*.apk' -print -quit)"
-          test -n "$APK"
+          if [ -z "$APK" ]; then APK="app/build/outputs/apk/debug/app-debug.apk"; fi
+          test -f "$APK"
+          unzip -Z -1 "$APK" > "$RUNNER_TEMP/apk-entries.txt"
           for abi in arm64-v8a x86_64; do
-            unzip -Z -1 "$APK" | grep -q "^lib/$abi/libqjs.so$"
+            grep -q "^lib/$abi/libqjs.so$" "$RUNNER_TEMP/apk-entries.txt"
           done
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: Music-Player-debug
-          path: app/build/outputs/apk/debug/*.apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/androidTest/debug/*.apk
           if-no-files-found: error
           retention-days: 14
 
   device-tests:
+    needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/download-artifact@v4
         with:
-          distribution: temurin
-          java-version: '25'
-          cache: gradle
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.14'
-      - name: Install build dependencies
-        run: |
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;29.0.14206865" "cmake;4.1.2"
+          name: Music-Player-debug
+          path: apks
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Test cache and responsive player on Android
+      - name: Test cache, runtime, navigation and responsive player on Android
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -94,10 +95,16 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           script: |
-            chmod +x gradlew
+            mkdir -p device-results
             adb shell wm size 1280x800
             adb shell wm density 160
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon --stacktrace
+            APK="$(find apks -name '*universal*.apk' -print -quit)"
+            if [ -z "$APK" ]; then APK="$(find apks -name 'app-debug.apk' -print -quit)"; fi
+            adb install -r "$APK"
+            adb install -r "$(find apks -path '*androidTest*' -name '*.apk' -print -quit)"
+            adb shell am instrument -w app.ravyn.music.debug.test/androidx.test.runner.AndroidJUnitRunner > device-results/instrumentation.txt
+            cat device-results/instrumentation.txt
+            grep -q 'OK (' device-results/instrumentation.txt
       - name: Collect screenshots and logs
         if: always()
         run: |
@@ -108,8 +115,5 @@ jobs:
         if: always()
         with:
           name: Android-device-test-results
-          path: |
-            app/build/reports/androidTests/
-            app/build/outputs/androidTest-results/
-            device-results/
+          path: device-results/
           retention-days: 14
