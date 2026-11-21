@@ -197,10 +197,12 @@ private fun <T : Innertube.Item> RavynResultList(
     }
     var loading by remember(query, category) { mutableStateOf(false) }
     var failed by remember(query, category) { mutableStateOf(false) }
+    var paginationFailed by remember(query, category) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(query, category) {
         loading = true
         failed = false
+        paginationFailed = false
         val response = runCatching { provider(null)?.getOrNull() }.getOrNull()
         page = response
         failed = response == null
@@ -243,11 +245,17 @@ private fun <T : Innertube.Item> RavynResultList(
         }
         if (page?.continuation != null && !loading) item {
             Spacer(Modifier.height(12.dp))
-            RavynPill("Load more results", false) {
+            if (paginationFailed) {
+                RavynLabel("Couldn't load more results. Try again.", 12, RavynStyle.secondary)
+                Spacer(Modifier.height(8.dp))
+            }
+            RavynPill(if (paginationFailed) "Retry loading more" else "Load more results", false) {
                 val token = page?.continuation
                 if (token != null) scope.launch {
                     loading = true
+                    paginationFailed = false
                     val next = runCatching { provider(token)?.getOrNull() }.getOrNull()
+                    paginationFailed = next == null
                     if (next != null) page = page?.copy(
                         items = page?.items.orEmpty() + next.items.orEmpty(),
                         continuation = next.continuation

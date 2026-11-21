@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +58,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.coerceAtMost
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.C
+import androidx.media3.datasource.cache.ContentMetadata
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -106,6 +109,7 @@ import app.vitune.core.ui.utils.roundedShape
 import app.vitune.core.ui.utils.songBundle
 import app.vitune.providers.innertube.models.NavigationEndpoint
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.absoluteValue
 
@@ -134,6 +138,23 @@ fun Player(
         )
     }
     var shouldBePlaying by remember(binder) { mutableStateOf(binder?.player?.shouldBePlaying == true) }
+    var isCachedOffline by remember(binder) { mutableStateOf(false) }
+    fun refreshCacheStatus() {
+        val id = binder?.player?.currentMediaItem?.mediaId
+        isCachedOffline = if (id == null || binder == null) false else runCatching {
+            val length = ContentMetadata.getContentLength(binder.cache.getContentMetadata(id))
+            length > 0L && length != C.LENGTH_UNSET.toLong() && binder.cache.isCached(id, 0L, length)
+        }.getOrDefault(false)
+    }
+    LaunchedEffect(binder, mediaItem?.mediaId) {
+        while (true) {
+            refreshCacheStatus()
+            delay(5_000L)
+        }
+    }
+    var isBuffering by remember(binder) {
+        mutableStateOf(binder?.player?.playbackState == Player.STATE_BUFFERING)
+    }
 
     var likedAt by remember(mediaItem) {
         mutableStateOf(
@@ -164,6 +185,8 @@ fun Player(
         object : Player.Listener {
             override fun onMediaItemTransition(newMediaItem: MediaItem?, reason: Int) {
                 mediaItem = newMediaItem
+                isBuffering = player.playbackState == Player.STATE_BUFFERING
+                refreshCacheStatus()
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -172,6 +195,8 @@ fun Player(
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 shouldBePlaying = player.shouldBePlaying
+                isBuffering = playbackState == Player.STATE_BUFFERING
+                refreshCacheStatus()
             }
         }
     }
@@ -288,6 +313,14 @@ fun Player(
                                     overflow = TextOverflow.Ellipsis
                                 )
 
+                                AnimatedVisibility(visible = isCachedOffline) {
+                                    BasicText(
+                                        text = "· OFFLINE",
+                                        style = typography.xs.secondary,
+                                        maxLines = 1
+                                    )
+                                }
+
                                 AnimatedVisibility(visible = extras?.explicit == true) {
                                     Image(
                                         painter = painterResource(R.drawable.explicit),
@@ -334,13 +367,24 @@ fun Player(
                             )
                             .clip(CircleShape)
                     ) {
-                        AnimatedPlayPauseButton(
-                            playing = shouldBePlaying,
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(horizontal = 4.dp, vertical = 8.dp)
-                                .size(23.dp)
-                        )
+                        if (isBuffering && shouldBePlaying) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(horizontal = 4.dp, vertical = 8.dp)
+                                    .size(23.dp),
+                                color = colorPalette.accent,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            AnimatedPlayPauseButton(
+                                playing = shouldBePlaying,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(horizontal = 4.dp, vertical = 8.dp)
+                                    .size(23.dp)
+                            )
+                        }
                     }
 
                     IconButton(
@@ -447,23 +491,69 @@ fun Player(
 
         if (isLandscape) Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = containerModifier.padding(top = 32.dp)
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            modifier = Modifier
+                .clip(shape)
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color(0xFF18191A),
+                        1f to Color(0xFF111214)
+                    )
+                )
+                .padding(
+                    windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+                        .asPaddingValues()
+                )
+                .padding(horizontal = 24.dp, vertical = 12.dp)
         ) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .weight(0.66f)
-                    .padding(bottom = 16.dp)
+                    .weight(0.85f)
+                    .fillMaxHeight()
+                    .padding(vertical = 12.dp)
             ) {
-                thumbnailContent(Modifier.padding(horizontal = 16.dp))
+                thumbnailContent(Modifier.fillMaxSize().clip(RoundedCornerShape(4.dp)))
             }
 
-            controlsContent(
-                Modifier
-                    .padding(vertical = 8.dp)
-                    .fillMaxHeight()
-                    .weight(1f)
-            )
+            Column(
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            ) {
+                BasicText(
+                    text = "NOW PLAYING",
+                    style = typography.xs.semiBold.secondary
+                )
+                Spacer(Modifier.height(8.dp))
+                BasicText(
+                    text = metadata?.title?.toString().orEmpty(),
+                    style = typography.m.semiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                BasicText(
+                    text = metadata?.artist?.toString().orEmpty() +
+                        if (isCachedOffline) "  ·  OFFLINE" else "",
+                    style = typography.xs.secondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (isBuffering && shouldBePlaying) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            color = colorPalette.accent,
+                            strokeWidth = 2.dp
+                        )
+                        BasicText("Loading audio…", style = typography.xs.secondary)
+                    }
+                }
+                controlsContent(Modifier.fillMaxWidth().weight(1f))
+            }
         } else RavynNowPlaying(
             media = mediaItem?.toUiMedia(duration),
             artworkAccent = artworkAccent,
@@ -474,6 +564,8 @@ fun Player(
             likedAt = likedAt,
             setLikedAt = { likedAt = it },
             shouldBePlaying = shouldBePlaying,
+            isBuffering = isBuffering,
+            isCachedOffline = isCachedOffline,
             position = position,
             onCollapse = layoutState::collapseSoft,
             onMore = {

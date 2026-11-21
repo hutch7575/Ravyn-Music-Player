@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -67,6 +68,8 @@ fun RavynNowPlaying(
     likedAt: Long?,
     setLikedAt: (Long?) -> Unit,
     shouldBePlaying: Boolean,
+    isBuffering: Boolean,
+    isCachedOffline: Boolean,
     position: Long,
     onCollapse: () -> Unit,
     onMore: () -> Unit,
@@ -137,8 +140,25 @@ fun RavynNowPlaying(
                         letterSpacing = (-0.6).sp
                     ))
                 Spacer(Modifier.height(5.dp))
-                BasicText(artist, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    style = TextStyle(color = sub, fontSize = 13.sp))
+                BasicText(
+                    text = artist + if (isCachedOffline) "  ·  OFFLINE" else "",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = TextStyle(color = sub, fontSize = 13.sp)
+                )
+                if (isBuffering && shouldBePlaying) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(13.dp),
+                            color = accent,
+                            strokeWidth = 2.dp
+                        )
+                        BasicText("Loading audio…", style = TextStyle(color = sub, fontSize = 11.sp))
+                    }
+                }
             }
             RavynPlayerIcon(
                 if (likedAt == null) R.drawable.heart_outline else R.drawable.heart,
@@ -207,7 +227,13 @@ fun RavynNowPlaying(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                AnimatedContent(targetState = shouldBePlaying,
+                if (isBuffering && shouldBePlaying) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(29.dp),
+                        color = Color(0xFF111315),
+                        strokeWidth = 2.5.dp
+                    )
+                } else AnimatedContent(targetState = shouldBePlaying,
                     transitionSpec = {
                         ContentTransform(
                             fadeIn(tween(170)) + scaleIn(

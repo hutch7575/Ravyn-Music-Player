@@ -1,23 +1,32 @@
 import yt_dlp
 import json
+import re
 
 
 def download(quickjs_bin: str, video_id: str) -> str:
     # Keep all audio-stream extraction in one call, without the unnecessary
     # four-client metadata lookup or megabytes of formatted JSON.
+    if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
+        raise ValueError("Invalid YouTube video ID")
+
     opts = {
         "format": "bestaudio",
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
         "socket_timeout": 8,
+        "extract_flat": False,
         "retries": 1,
         "extractor_retries": 1,
         "fragment_retries": 1,
         "js_runtimes": {"quickjs": {"path": quickjs_bin}},
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(video_id, download=False)
+        # yt-dlp expects a URL here. A bare 11-character video ID can be
+        # treated as a search term or rejected, preventing uncached playback.
+        info = ydl.extract_info(
+            f"https://www.youtube.com/watch?v={video_id}", download=False
+        )
 
     if not isinstance(info, dict) or not info.get("url"):
         raise ValueError("yt-dlp returned no playable audio URL")
