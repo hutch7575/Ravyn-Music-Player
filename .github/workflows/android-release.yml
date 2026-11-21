@@ -82,8 +82,8 @@ jobs:
           fi
           test -n "$APK" || { echo "::error::No universal or combined release APK found"; exit 1; }
           for abi in arm64-v8a x86_64; do
-            if ! unzip -Z -1 "$APK" | grep -q "^lib/$abi/"; then
-              echo "::error::Selected APK is missing native libraries for $abi; refusing to publish a partial release"
+            if ! unzip -Z -1 "$APK" | grep -q "^lib/$abi/libqjs.so$"; then
+              echo "::error::Selected APK is missing the QuickJS extraction runtime for $abi; refusing to publish a partial release"
               exit 1
             fi
           done

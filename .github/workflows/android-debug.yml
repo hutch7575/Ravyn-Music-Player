@@ -49,6 +49,13 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew :app:assembleDebug --no-daemon --stacktrace
+      - name: Verify bundled extraction runtimes
+        run: |
+          APK="$(find app/build/outputs/apk/debug -name '*universal*.apk' -print -quit)"
+          test -n "$APK"
+          for abi in arm64-v8a x86_64; do
+            unzip -Z -1 "$APK" | grep -q "^lib/$abi/libqjs.so$"
+          done
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:

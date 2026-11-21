@@ -105,6 +105,7 @@ import app.vitune.android.utils.setPlaybackPitch
 import app.vitune.android.utils.shouldBePlaying
 import app.vitune.android.utils.thumbnail
 import app.vitune.android.utils.timer
+import app.vitune.android.utils.trackAvailability
 import app.vitune.android.utils.toast
 import app.vitune.compose.preferences.SharedPreferencesProperty
 import app.vitune.core.data.enums.ExoPlayerDiskCacheSize
@@ -1349,7 +1350,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         }
 
         fun isCached(song: SongWithContentLength) =
-            song.contentLength?.let { cache.isCached(song.song.id, 0L, it) } ?: false
+            cache.trackAvailability(song.song.id) == app.vitune.android.utils.TrackAvailability.Offline
 
         fun playFromSearch(query: String) {
             coroutineScope.launch {

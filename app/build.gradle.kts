@@ -127,31 +127,32 @@ android {
     }
 }
 
-afterEvaluate {
-    val jniLibs = file("${layout.projectDirectory}/src/main/jniLibs").also { it.mkdirs() }
-    android.buildTypes.forEach { type ->
-        val typeCapitalized = type.name.let {
-            it.first().uppercase() + it.substring(1)
+// QuickJS is an executable disguised as a native library so Android installs
+// it in nativeLibraryDir with executable permissions. It must be staged BEFORE
+// mergeJniLibFolders/package, rather than in assemble.doFirst (which runs last).
+android.buildTypes.configureEach {
+    val variantName = name
+    val capitalized = variantName.replaceFirstChar { it.uppercase() }
+    val stagedDirectory = layout.buildDirectory.dir("generated/quickjs/$variantName")
+    android.sourceSets.getByName(variantName).jniLibs.srcDir(stagedDirectory)
+    val stageQuickJs = tasks.register<Sync>("stage${capitalized}QuickJs") {
+        dependsOn("externalNativeBuild$capitalized")
+        from(layout.projectDirectory.dir(".cxx")) {
+            include("${if (variantName == "debug") "Debug" else "RelWithDebInfo"}/**/bin/*/qjs")
+            eachFile { relativePath = RelativePath(true, file.parentFile.name, "libqjs.so") }
+            includeEmptyDirs = false
         }
-
-        tasks.named("assemble${typeCapitalized}").configure {
-            doFirst {
-                val cxxDir =
-                    file("${layout.buildDirectory.get()}/intermediates/cxx/${if (typeCapitalized == "Debug") "Debug" else "RelWithDebInfo"}")
-
-                cxxDir.walkTopDown().forEach cxx@{ f ->
-                    if (f.name != "qjs") return@cxx
-
-                    f.copyTo(
-                        target = jniLibs
-                            .resolve(f.parentFile.name)
-                            .also { it.mkdirs() }
-                            .resolve("libqjs.so"), // disguise because fuck you
-                        overwrite = true
-                    )
+        into(stagedDirectory)
+        doLast {
+            listOf("arm64-v8a", "x86_64").forEach { abi ->
+                check(stagedDirectory.get().file("$abi/libqjs.so").asFile.isFile) {
+                    "Missing QuickJS executable for $abi"
                 }
             }
         }
+    }
+    tasks.configureEach {
+        if (name == "merge${capitalized}JniLibFolders") dependsOn(stageQuickJs)
     }
 }
 
