@@ -27,6 +27,12 @@ class PlayerLayoutTest {
         val liked = mutableStateOf<Long?>(null)
         val lyrics = mutableStateOf(false)
         compose.setContent {
+            val appearance = app.vitune.core.ui.Appearance(
+                app.vitune.core.ui.defaultDarkPalette,
+                app.vitune.core.ui.typographyOf(Color.White, app.vitune.core.ui.BuiltInFontFamily.System, false),
+                8.dp
+            )
+            androidx.compose.runtime.CompositionLocalProvider(app.vitune.core.ui.LocalAppearance provides appearance) {
             Box(Modifier.requiredSize(width.dp, height.dp)) {
                 RavynNowPlaying(media = null, artworkAccent = Color(0xFF8877AA), topInset = 0.dp,
                     binder = null, title = "A long song title that should stay inside its available space",
@@ -36,6 +42,7 @@ class PlayerLayoutTest {
                     onToggleLyrics = { lyrics.value = !lyrics.value }, onShowQueue = {},
                     albumTitle = "Example album", onArtistClick = {},
                     thumbnailContent = { Box(it.background(Color.DarkGray)) })
+            }
             }
         }
         compose.onNodeWithContentDescription("Pause").assertIsDisplayed().assertHasClickAction()

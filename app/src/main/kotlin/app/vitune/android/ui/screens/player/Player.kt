@@ -157,20 +157,10 @@ fun Player(
         }
     }
 
-    var likedAt by remember(mediaItem) {
-        mutableStateOf(
-            value = null,
-            policy = object : SnapshotMutationPolicy<Long?> {
-                override fun equivalent(a: Long?, b: Long?): Boolean {
-                    mediaItem?.mediaId?.let {
-                        query {
-                            Database.like(it, b)
-                        }
-                    }
-                    return a == b
-                }
-            }
-        )
+    var likedAt by remember(mediaItem?.mediaId) { mutableStateOf<Long?>(null) }
+    val setLikedAt: (Long?) -> Unit = { value ->
+        likedAt = value
+        mediaItem?.mediaId?.let { id -> query { Database.like(id, value) } }
     }
 
     LaunchedEffect(mediaItem) {
@@ -357,8 +347,11 @@ fun Player(
                             .clickable(
                                 onClick = {
                                     if (shouldBePlaying) binder?.player?.pause()
-                                    else {
+                                    else if (binder?.playbackFailure != null || binder?.player?.playerError != null) {
+                                        binder?.retryPlayback()
+                                    } else {
                                         if (binder?.player?.playbackState == Player.STATE_IDLE) binder.player.prepare()
+                                        if (binder?.player?.playbackState == Player.STATE_ENDED) binder.player.seekToDefaultPosition()
                                         binder?.player?.play()
                                     }
                                 },
@@ -450,7 +443,7 @@ fun Player(
                     onShowStatsForNerds = { isShowingStatsForNerds = it },
                     onOpenDialog = { isShowingLyricsDialog = true },
                     likedAt = likedAt,
-                    setLikedAt = { likedAt = it },
+                    setLikedAt = setLikedAt,
                     onArtworkAccent = { songId, color ->
                         // Ignore stale callbacks when another song starts loading.
                         if (mediaItem?.mediaId == songId) artworkAccent = color
@@ -488,7 +481,7 @@ fun Player(
             title = metadata?.title?.toString().orEmpty(),
             artist = metadata?.artist?.toString().orEmpty(),
             likedAt = likedAt,
-            setLikedAt = { likedAt = it },
+            setLikedAt = setLikedAt,
             shouldBePlaying = shouldBePlaying,
             isBuffering = showLoading,
             availability = availability,

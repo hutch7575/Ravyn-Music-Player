@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import app.vitune.core.ui.LocalAppearance
@@ -86,13 +87,30 @@ fun IconButton(
     indication: Indication? = ripple(bounded = false)
 ) = Image(
     painter = painterResource(icon),
-    contentDescription = null,
+    contentDescription = when (icon) {
+        app.vitune.android.R.drawable.play -> "Play"
+        app.vitune.android.R.drawable.pause -> "Pause"
+        app.vitune.android.R.drawable.play_skip_back -> "Previous"
+        app.vitune.android.R.drawable.play_skip_forward -> "Next"
+        app.vitune.android.R.drawable.chevron_back -> "Back"
+        app.vitune.android.R.drawable.chevron_down -> "Collapse"
+        app.vitune.android.R.drawable.ellipsis_horizontal -> "More options"
+        app.vitune.android.R.drawable.search -> "Search"
+        app.vitune.android.R.drawable.close -> "Close"
+        app.vitune.android.R.drawable.download -> "Download"
+        app.vitune.android.R.drawable.shuffle -> "Shuffle"
+        app.vitune.android.R.drawable.sync -> "Refresh"
+        app.vitune.android.R.drawable.heart -> "Unlike"
+        app.vitune.android.R.drawable.heart_outline -> "Like"
+        else -> null
+    },
     colorFilter = ColorFilter.tint(color),
     modifier = Modifier
         .clickable(
             indication = indication,
             interactionSource = remember { MutableInteractionSource() },
             enabled = enabled,
+            role = Role.Button,
             onClick = onClick
         )
         .then(modifier)

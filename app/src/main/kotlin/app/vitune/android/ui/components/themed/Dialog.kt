@@ -230,6 +230,7 @@ fun DefaultDialog(
                 color = LocalAppearance.current.colorPalette.background1,
                 shape = 12.dp.roundedShape
             )
+            .verticalScroll(rememberScrollState())
             .padding(
                 horizontal = horizontalPadding,
                 vertical = 16.dp
@@ -283,7 +284,7 @@ fun <T> ValueSelectorDialogBody(
         modifier = Modifier.padding(vertical = 8.dp, horizontal = 24.dp)
     )
 
-    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+    Column(modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
         values.forEach { value ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -400,6 +401,7 @@ fun SliderDialog(
         modifier = modifier
             .padding(all = 24.dp)
             .background(color = colorPalette.background1, shape = 12.dp.roundedShape)
+            .verticalScroll(rememberScrollState())
             .padding(vertical = 16.dp)
     ) {
         BasicText(

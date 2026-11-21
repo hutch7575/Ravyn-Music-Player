@@ -8,6 +8,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,6 +42,8 @@ fun CacheSettings() = with(DataPreferences) {
     val context = LocalContext.current
     val binder = LocalPlayerServiceBinder.current
     val imageCache = remember(context) { context.imageLoader.diskCache }
+    val scope = rememberCoroutineScope()
+    var clearing by remember { mutableStateOf(false) }
 
     SettingsCategoryScreen(title = stringResource(R.string.cache)) {
         SettingsDescription(text = stringResource(R.string.cache_description))
@@ -44,7 +54,7 @@ fun CacheSettings() = with(DataPreferences) {
                 Formatter.formatShortFileSize(context, imageCacheSize)
             }
             val sizePercentage = remember(imageCacheSize, coilDiskCacheMaxSize) {
-                imageCacheSize.toFloat() / coilDiskCacheMaxSize.bytes.coerceAtLeast(1)
+                (imageCacheSize.toFloat() / coilDiskCacheMaxSize.bytes.coerceAtLeast(1)).coerceIn(0f, 1f)
             }
 
             SettingsGroup(
@@ -56,10 +66,16 @@ fun CacheSettings() = with(DataPreferences) {
                 ),
                 trailingContent = {
                     SecondaryTextButton(
-                        text = stringResource(R.string.clear),
+                        text = if (clearing) "Clearing…" else stringResource(R.string.clear),
+                        enabled = !clearing,
                         onClick = {
-                            diskCache.clear()
-                            imageCacheSize = 0L
+                            clearing = true
+                            scope.launch {
+                                try {
+                                    withContext(Dispatchers.IO) { diskCache.clear() }
+                                    imageCacheSize = diskCache.size
+                                } finally { clearing = false }
+                            }
                         },
                         modifier = Modifier.padding(end = 12.dp)
                     )
@@ -81,12 +97,19 @@ fun CacheSettings() = with(DataPreferences) {
             }
         }
         binder?.cache?.let { cache ->
-            val diskCacheSize by remember { derivedStateOf { cache.cacheSpace } }
+            // This diagnostic page samples a single cheap total, only while visible.
+            // Track availability itself is driven by cache span events.
+            val diskCacheSize by produceState(0L, cache) {
+                while (isActive) {
+                    value = withContext(Dispatchers.IO) { cache.cacheSpace }
+                    delay(5_000L)
+                }
+            }
             val formattedSize = remember(diskCacheSize) {
                 Formatter.formatShortFileSize(context, diskCacheSize)
             }
             val sizePercentage = remember(diskCacheSize, exoPlayerDiskCacheMaxSize) {
-                diskCacheSize.toFloat() / exoPlayerDiskCacheMaxSize.bytes.coerceAtLeast(1)
+                (diskCacheSize.toFloat() / exoPlayerDiskCacheMaxSize.bytes.coerceAtLeast(1)).coerceIn(0f, 1f)
             }
 
             SettingsGroup(
