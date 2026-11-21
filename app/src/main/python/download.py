@@ -1,6 +1,7 @@
 import yt_dlp
 import json
 import re
+from urllib.parse import urlsplit
 
 
 def download(quickjs_bin: str, video_id: str) -> str:
@@ -10,7 +11,9 @@ def download(quickjs_bin: str, video_id: str) -> str:
         raise ValueError("Invalid YouTube video ID")
 
     opts = {
-        "format": "bestaudio",
+        # Media3 reads progressive byte ranges through the shared audio cache.
+        # HLS/DASH manifests require a different media source and cache model.
+        "format": "bestaudio[protocol=https]/bestaudio[protocol=http]",
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
@@ -30,6 +33,9 @@ def download(quickjs_bin: str, video_id: str) -> str:
 
     if not isinstance(info, dict) or not info.get("url"):
         raise ValueError("yt-dlp returned no playable audio URL")
+
+    if urlsplit(info["url"]).scheme not in ("https", "http"):
+        raise ValueError("yt-dlp returned an unsupported audio URL")
 
     selected_id = info.get("format_id")
     selected = next(

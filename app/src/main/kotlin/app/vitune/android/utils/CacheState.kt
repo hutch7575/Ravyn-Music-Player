@@ -99,22 +99,10 @@ fun isCached(
     key: Any? = Unit,
     binder: PlayerService.Binder? = LocalPlayerServiceBinder.current
 ): Boolean {
-    if (mediaId.startsWith(LOCAL_KEY_PREFIX)) return true
-
-    var format: Format? by remember { mutableStateOf(null) }
-
-    LaunchedEffect(mediaId, key) {
-        Database
-            .format(mediaId)
-            .distinctUntilChanged()
-            .collect { format = it }
-    }
-
-    return remember(mediaId, binder, format, key) {
-        format?.contentLength?.let { len ->
-            binder?.cache?.isCached(mediaId, 0, len)
-        } ?: false
-    }
+    // Keep the compatibility API for menus and download actions, backed by the
+    // same span listener used by the player and song rows. `key` is retained for callers.
+    val status = trackAvailability(mediaId, binder)
+    return status == TrackAvailability.Offline || status == TrackAvailability.Local
 }
 
 @OptIn(UnstableApi::class)
@@ -144,65 +132,42 @@ class ConditionalCacheDataSourceFactory(
     }
 
     override fun createDataSource() = object : DataSource {
-        private lateinit var selectedFactory: DataSource.Factory
+        private var source: DataSource? = null
         private val transferListeners = mutableListOf<TransferListener>()
 
-        private fun createSource(factory: DataSource.Factory = selectedFactory) =
+        private fun createSource(factory: DataSource.Factory) =
             factory.createDataSource().apply {
-                transferListeners.forEach { addTransferListener(it) }
+                transferListeners.forEach(::addTransferListener)
             }
-
-        private val open = AtomicBoolean(false)
-        private var source by object : ReadWriteProperty<Any?, DataSource> {
-            var s: DataSource? = null
-
-            override fun getValue(thisRef: Any?, property: KProperty<*>) = s ?: run {
-                val newSource = runCatching {
-                    createSource()
-                }.getOrElse {
-                    if (it is UninitializedPropertyAccessException) throw PlaybackException(
-                        /* message = */ "Illegal access of data source methods before calling open()",
-                        /* cause = */ it,
-                        /* errorCode = */ PlaybackException.ERROR_CODE_UNSPECIFIED
-                    ) else throw it
-                }
-                s = newSource
-                newSource
-            }
-
-            override fun setValue(thisRef: Any?, property: KProperty<*>, value: DataSource) {
-                s = value
-            }
-        }
 
         override fun read(buffer: ByteArray, offset: Int, length: Int) =
-            source.read(buffer, offset, length)
+            checkNotNull(source) { "Data source is not open" }.read(buffer, offset, length)
 
         override fun addTransferListener(transferListener: TransferListener) {
-            if (::selectedFactory.isInitialized) source.addTransferListener(transferListener)
-
+            source?.addTransferListener(transferListener)
             transferListeners += transferListener
         }
 
         override fun open(dataSpec: DataSpec): Long {
-            selectedFactory =
-                if (shouldCache(dataSpec)) cacheDataSourceFactory else upstreamDataSourceFactory
-
-            return runCatching {
-                // Source is still considered 'open' even when an error occurs. See DataSource::close
-                open.set(true)
-                source.open(dataSpec)
-            }.getOrElse {
-                if (it is ReadOnlyException) {
-                    source = createSource(upstreamDataSourceFactory)
-                    source.open(dataSpec)
-                } else throw it
+            val factory = if (shouldCache(dataSpec)) cacheDataSourceFactory else upstreamDataSourceFactory
+            val selected = createSource(factory)
+            source = selected
+            return try {
+                selected.open(dataSpec)
+            } catch (error: ReadOnlyException) {
+                // A failed cache open may hold an upstream connection and a hole
+                // span. Close it before replacing it, including when writes were paused.
+                selected.close()
+                createSource(upstreamDataSourceFactory).also { source = it }.open(dataSpec)
             }
         }
 
-        override fun getUri() = if (open.get()) source.uri else null
-        override fun close() = if (open.compareAndSet(true, false)) {
-            source.close()
-        } else Unit
+        override fun getUri() = source?.uri
+        override fun getResponseHeaders() = source?.responseHeaders.orEmpty()
+        override fun close() {
+            val opened = source
+            source = null
+            opened?.close()
+        }
     }
 }

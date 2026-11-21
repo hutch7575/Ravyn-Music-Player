@@ -1,33 +1,19 @@
 package app.vitune.android.ui.screens.player
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -39,6 +25,10 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,11 +42,17 @@ import app.vitune.android.models.ui.UiMedia
 import app.vitune.android.preferences.PlayerPreferences
 import app.vitune.android.service.PlayerService
 import app.vitune.android.ui.components.SeekBar
+import app.vitune.android.ui.components.themed.availabilityLabel
+import app.vitune.android.ui.ravyn.RavynStyle
+import app.vitune.android.utils.DisposableListener
+import app.vitune.android.utils.TrackAvailability
 import app.vitune.android.utils.forceSeekToNext
 import app.vitune.android.utils.forceSeekToPrevious
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
-/** New Now Playing layout based on the approved Ravyn reference. Playback and
- * artwork/lyrics gesture logic come from the existing media engine, not ViTune UI. */
+/** One set of controls and visual tokens for both orientations. */
 @Composable
 fun RavynNowPlaying(
     media: UiMedia?,
@@ -69,7 +65,7 @@ fun RavynNowPlaying(
     setLikedAt: (Long?) -> Unit,
     shouldBePlaying: Boolean,
     isBuffering: Boolean,
-    isCachedOffline: Boolean,
+    availability: TrackAvailability,
     position: Long,
     onCollapse: () -> Unit,
     onMore: () -> Unit,
@@ -81,288 +77,208 @@ fun RavynNowPlaying(
     thumbnailContent: @Composable (Modifier) -> Unit,
     modifier: Modifier = Modifier
 ) = BoxWithConstraints(modifier.fillMaxSize()) {
+    val landscape = maxWidth > maxHeight
     val compact = maxHeight < 615.dp
-    val horizontal = if (maxWidth < 350.dp) 18.dp else 23.dp
-    val animatedColor by animateColorAsState(
-        targetValue = artworkAccent,
-        animationSpec = tween(560, easing = FastOutSlowInEasing),
-        label = "Album artwork colour"
-    )
+    val animatedColor by animateColorAsState(artworkAccent, tween(500), label = "Artwork colour")
     val accent = lerp(animatedColor, Color.White, 0.08f)
-    val main = Color(0xFFF8F8FA)
-    val sub = Color(0xFFC1C4C7)
-
-    Box(Modifier.fillMaxSize().background(
-        Brush.verticalGradient(
-            0f to lerp(Color(0xFF18191A), animatedColor, 0.27f),
-            0.33f to lerp(Color(0xFF171819), animatedColor, 0.12f),
-            0.78f to Color(0xFF141516),
-            1f to Color(0xFF111214)
-        )
-    ))
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize()
-            .padding(start = horizontal, end = horizontal, top = topInset)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().height(57.dp)) {
-            RavynPlayerIcon(R.drawable.chevron_down, "Close player", onCollapse)
-            Spacer(Modifier.weight(1f))
-            BasicText("NOW PLAYING", style = TextStyle(
-                color = main, fontSize = 13.sp,
-                letterSpacing = 0.35.sp, fontWeight = FontWeight.Medium))
-            Spacer(Modifier.weight(1f))
-            RavynPlayerIcon(R.drawable.ellipsis_horizontal, "More options", onMore)
-        }
-
-        Spacer(Modifier.height(if (compact) 1.dp else 9.dp))
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            contentAlignment = Alignment.Center
-        ) {
-            val side = minOf(maxWidth, maxHeight, 450.dp)
-            if (side > 0.dp) {
-                thumbnailContent(Modifier.size(side)
-                    .clip(RoundedCornerShape(2.dp)))
+    val player = binder?.player
+    var shuffled by remember(player) { mutableStateOf(player?.shuffleModeEnabled == true) }
+    player.DisposableListener {
+        object : Player.Listener {
+            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                shuffled = shuffleModeEnabled
             }
         }
+    }
 
-        Spacer(Modifier.height(if (compact) 6.dp else 18.dp))
-        Row(verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.weight(1f)) {
-                BasicText(title, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    style = TextStyle(
-                        color = main, fontSize = if (compact) 19.sp else 22.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = (-0.6).sp
-                    ))
-                Spacer(Modifier.height(5.dp))
-                BasicText(
-                    text = artist + if (isCachedOffline) "  ·  OFFLINE" else "",
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = TextStyle(color = sub, fontSize = 13.sp)
-                )
-                if (isBuffering && shouldBePlaying) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(13.dp),
-                            color = accent,
-                            strokeWidth = 2.dp
-                        )
-                        BasicText("Loading audio…", style = TextStyle(color = sub, fontSize = 11.sp))
-                    }
-                }
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+        lerp(RavynStyle.panel, animatedColor, 0.25f), RavynStyle.background
+    ))))
+
+    val songInfo: @Composable () -> Unit = {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.weight(1f)) {
+                PlayerText(title, if (compact) 19 else 22, bold = true)
+                Spacer(Modifier.height(4.dp))
+                PlayerText(artist, 13, RavynStyle.secondary)
             }
             RavynPlayerIcon(
                 if (likedAt == null) R.drawable.heart_outline else R.drawable.heart,
                 if (likedAt == null) "Like song" else "Unlike song",
                 { setLikedAt(if (likedAt == null) System.currentTimeMillis() else null) },
-                tint = if (likedAt == null) main else accent
+                tint = if (likedAt == null) RavynStyle.text else accent
             )
         }
-
-        Spacer(Modifier.height(if (compact) 8.dp else 15.dp))
-        Box(Modifier.fillMaxWidth().height(15.dp),
-            contentAlignment = Alignment.Center) {
-            if (binder != null && media != null && media.duration > 0L
-                && media.duration != C.TIME_UNSET) {
-                SeekBar(
-                    binder = binder, position = position, media = media,
-                    color = accent, backgroundColor = Color.White.copy(alpha = 0.27f),
-                    style = PlayerPreferences.SeekBarStyle.Static,
-                    scrubberRadius = 5.dp
-                )
+        // Reserve one line so buffering does not move the controls or artwork.
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            modifier = Modifier.fillMaxWidth().height(24.dp)) {
+            if (isBuffering) {
+                CircularProgressIndicator(Modifier.size(12.dp), color = accent, strokeWidth = 1.5.dp)
+                PlayerText(stringResource(R.string.loading_audio), 11, RavynStyle.secondary)
             } else {
-                Box(Modifier.fillMaxWidth().height(3.dp)
-                    .background(Color.White.copy(alpha = 0.24f),
-                        RoundedCornerShape(3.dp)))
+                PlayerText(availabilityLabel(availability), 11, RavynStyle.secondary)
             }
         }
-        Row(horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()) {
-            RavynTimestamp(position, sub)
-            RavynTimestamp(
-                if (media != null && media.duration > 0L &&
-                    media.duration != C.TIME_UNSET) media.duration else 0L, sub
-            )
+    }
+    val progress: @Composable () -> Unit = {
+        val validDuration = media != null && media.duration > 0L && media.duration != C.TIME_UNSET
+        Box(Modifier.fillMaxWidth().height(24.dp), contentAlignment = Alignment.Center) {
+            if (binder != null && media != null && validDuration) SeekBar(
+                binder = binder, position = position, media = media,
+                color = accent, backgroundColor = Color.White.copy(alpha = 0.24f),
+                style = PlayerPreferences.SeekBarStyle.Static, scrubberRadius = 5.dp
+            ) else Box(Modifier.fillMaxWidth().height(3.dp)
+                .background(Color.White.copy(alpha = 0.24f), CircleShape))
         }
-
-        Spacer(Modifier.height(if (compact) 7.dp else 15.dp))
-        val player = binder?.player
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().height(66.dp)
-        ) {
-            RavynPlayerIcon(
-                R.drawable.shuffle, "Shuffle",
-                {
-                    if (player != null) player.shuffleModeEnabled = !player.shuffleModeEnabled
-                },
-                tint = if (player?.shuffleModeEnabled == true) accent else main,
-                modifier = Modifier.weight(1f)
-            )
-            RavynPlayerIcon(
-                R.drawable.play_skip_back, "Previous",
-                { player?.forceSeekToPrevious() }, main, Modifier.weight(1f)
-            )
-            Box(
-                Modifier.size(60.dp).clip(CircleShape)
-                    .background(Color.White)
-                    .clickable {
-                        if (player != null) {
-                            if (shouldBePlaying) player.pause()
-                            else {
-                                if (player.playbackState == Player.STATE_IDLE) player.prepare()
-                                player.play()
-                            }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            RavynTimestamp(position)
+            if (validDuration) RavynTimestamp(media!!.duration)
+            else PlayerText("—:—", 12, RavynStyle.secondary)
+        }
+    }
+    val transport: @Composable () -> Unit = {
+        Row(Modifier.fillMaxWidth().height(66.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            RavynPlayerIcon(R.drawable.shuffle, "Shuffle",
+                { player?.shuffleModeEnabled = !shuffled },
+                if (shuffled) accent else RavynStyle.text,
+                state = if (shuffled) "On" else "Off")
+            RavynPlayerIcon(R.drawable.play_skip_back, "Previous", { player?.forceSeekToPrevious() })
+            Box(Modifier.size(60.dp).clip(CircleShape).background(Color.White)
+                .semantics {
+                    contentDescription = if (shouldBePlaying) "Pause" else "Play"
+                    stateDescription = if (isBuffering) "Loading audio" else if (shouldBePlaying) "Playing" else "Paused"
+                }.clickable(role = Role.Button) {
+                    if (player != null) {
+                        if (shouldBePlaying) player.pause()
+                        else if (binder.playbackFailure != null || player.playerError != null)
+                            binder.retryPlayback()
+                        else {
+                            if (player.playbackState == Player.STATE_IDLE) player.prepare()
+                            if (player.playbackState == Player.STATE_ENDED) player.seekToDefaultPosition()
+                            player.play()
                         }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                if (isBuffering && shouldBePlaying) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(29.dp),
-                        color = Color(0xFF111315),
-                        strokeWidth = 2.5.dp
-                    )
-                } else AnimatedContent(targetState = shouldBePlaying,
-                    transitionSpec = {
-                        ContentTransform(
-                            fadeIn(tween(170)) + scaleIn(
-                                initialScale = 0.82f, animationSpec = tween(170)),
-                            fadeOut(tween(110)), sizeTransform = null
-                        )
-                    }, label = "Animated playback controls") { playing ->
-                    Image(painterResource(if (playing) R.drawable.pause else R.drawable.play),
-                        contentDescription = if (playing) "Pause" else "Play",
-                        colorFilter = ColorFilter.tint(Color(0xFF111315)),
-                        modifier = Modifier.size(31.dp))
-                }
-            }
-            RavynPlayerIcon(
-                R.drawable.play_skip_forward, "Next", { player?.forceSeekToNext() },
-                main, Modifier.weight(1f)
-            )
-            RavynPlayerIcon(
-                if (PlayerPreferences.trackLoopEnabled) R.drawable.repeat_on
-                    else R.drawable.repeat,
-                "Repeat track",
-                { PlayerPreferences.trackLoopEnabled = !PlayerPreferences.trackLoopEnabled },
-                if (PlayerPreferences.trackLoopEnabled) accent else main,
-                Modifier.weight(1f)
-            )
-        }
-        Spacer(Modifier.height(if (compact) 7.dp else 15.dp))
-
-        RavynPlayerCard(
-            label = stringResource(if (isShowingLyrics) R.string.hide_lyrics_action else R.string.lyrics_action),
-            icon = R.drawable.musical_notes,
-            accent = accent,
-            highlighted = isShowingLyrics,
-            onClick = onToggleLyrics
-        )
-        Spacer(Modifier.height(if (compact) 3.dp else 5.dp))
-        RavynPlayerCard("UP NEXT", R.drawable.enqueue,
-            accent, highlighted = false, onShowQueue)
-        if (artist.isNotBlank()) {
-            Spacer(Modifier.height(if (compact) 5.dp else 10.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-                    .height(if (compact) 45.dp else 52.dp)
-                    .background(Color.White.copy(alpha = 0.045f))
-                    .then(if (onArtistClick != null) Modifier.clickable(onClick = onArtistClick)
-                          else Modifier)
-                    .padding(horizontal = 14.dp)
-            ) {
-                Image(painterResource(R.drawable.musical_notes), contentDescription = null,
-                    colorFilter = ColorFilter.tint(accent), modifier = Modifier.size(21.dp))
-                Column(Modifier.weight(1f)) {
-                    BasicText("ARTIST", style = TextStyle(
-                        color = sub, fontSize = 10.sp, letterSpacing = 0.5.sp))
-                    BasicText(artist, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = TextStyle(
-                            color = main, fontWeight = FontWeight.Medium,
-                            fontSize = 13.sp))
-                    if (!compact && !albumTitle.isNullOrBlank()) {
-                        BasicText(albumTitle, maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = TextStyle(color = sub, fontSize = 10.sp))
                     }
+                }, contentAlignment = Alignment.Center) {
+                // Keep a recognisable pause target while the surrounding ring shows loading.
+                if (isBuffering) CircularProgressIndicator(Modifier.size(49.dp),
+                    color = Color(0xFF111315), strokeWidth = 2.dp)
+                Image(painterResource(if (shouldBePlaying) R.drawable.pause else R.drawable.play),
+                    contentDescription = null, colorFilter = ColorFilter.tint(Color(0xFF111315)),
+                    modifier = Modifier.size(29.dp))
+            }
+            RavynPlayerIcon(R.drawable.play_skip_forward, "Next", { player?.forceSeekToNext() })
+            RavynPlayerIcon(
+                if (PlayerPreferences.trackLoopEnabled) R.drawable.repeat_on else R.drawable.repeat,
+                "Repeat track", { PlayerPreferences.trackLoopEnabled = !PlayerPreferences.trackLoopEnabled },
+                if (PlayerPreferences.trackLoopEnabled) accent else RavynStyle.text,
+                state = if (PlayerPreferences.trackLoopEnabled) "On" else "Off")
+        }
+    }
+    val actions: @Composable () -> Unit = {
+        if (landscape) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            RavynPlayerCard(stringResource(R.string.lyrics_action), R.drawable.musical_notes,
+                accent, isShowingLyrics, onToggleLyrics, Modifier.weight(1f))
+            RavynPlayerCard("UP NEXT", R.drawable.enqueue, accent, false, onShowQueue, Modifier.weight(1f))
+        } else {
+            RavynPlayerCard(stringResource(if (isShowingLyrics) R.string.hide_lyrics_action else R.string.lyrics_action),
+                R.drawable.musical_notes, accent, isShowingLyrics, onToggleLyrics)
+            Spacer(Modifier.height(6.dp))
+            RavynPlayerCard("UP NEXT", R.drawable.enqueue, accent, false, onShowQueue)
+        }
+    }
+    val failure: @Composable () -> Unit = {
+        if (binder?.playbackFailure != null) {
+            PlayerText(stringResource(R.string.playback_stalled), 12, RavynStyle.secondary, lines = 3)
+            RavynPlayerCard(stringResource(R.string.retry_playback), R.drawable.sync,
+                accent, true, { binder.retryPlayback() })
+        }
+    }
+
+    Column(Modifier.fillMaxSize().padding(start = if (landscape) 16.dp else 22.dp,
+        end = if (landscape) 16.dp else 22.dp, top = topInset)) {
+        Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+            RavynPlayerIcon(R.drawable.chevron_down, "Close player", onCollapse)
+            Spacer(Modifier.weight(1f))
+            PlayerText("NOW PLAYING", 12, bold = true)
+            Spacer(Modifier.weight(1f))
+            RavynPlayerIcon(R.drawable.ellipsis_horizontal, "More options", onMore)
+        }
+        if (landscape) Row(Modifier.fillMaxWidth().weight(1f).padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
+            BoxWithConstraints(Modifier.weight(0.85f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                thumbnailContent(Modifier.size(minOf(maxWidth, maxHeight, 450.dp))
+                    .clip(RoundedCornerShape(5.dp)))
+            }
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                songInfo(); progress(); transport(); actions(); failure()
+            }
+        } else {
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                val side = minOf(maxWidth, maxHeight, 450.dp)
+                if (side > 0.dp) thumbnailContent(Modifier.size(side).clip(RoundedCornerShape(5.dp)))
+            }
+            // Normally fits without scrolling; retains every action with large accessibility fonts.
+            Column(Modifier.heightIn(max = maxHeight - 48.dp - topInset)
+                .verticalScroll(rememberScrollState()).padding(top = 10.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 8.dp)) {
+                songInfo(); progress(); transport(); actions(); failure()
+                if (!compact && artist.isNotBlank()) Row(Modifier.fillMaxWidth()
+                    .heightIn(min = 48.dp).background(RavynStyle.panel, RavynStyle.radius)
+                    .then(if (onArtistClick != null) Modifier.clickable(role = Role.Button, onClick = onArtistClick) else Modifier)
+                    .padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        PlayerText("ARTIST", 10, RavynStyle.secondary)
+                        PlayerText(artist, 13)
+                        if (!albumTitle.isNullOrBlank()) PlayerText(albumTitle, 11, RavynStyle.secondary)
+                    }
+                    if (onArtistClick != null) Image(painterResource(R.drawable.chevron_forward), null,
+                        colorFilter = ColorFilter.tint(RavynStyle.secondary), modifier = Modifier.size(18.dp))
                 }
-                if (onArtistClick != null) Image(
-                    painterResource(R.drawable.chevron_forward),
-                    contentDescription = "Open artist profile",
-                    colorFilter = ColorFilter.tint(sub),
-                    modifier = Modifier.size(17.dp)
-                )
             }
         }
-        Spacer(Modifier.height(if (compact) 4.dp else 9.dp))
     }
 }
 
 @Composable
-private fun RavynPlayerIcon(
-    @DrawableRes icon: Int,
-    description: String,
-    onClick: () -> Unit,
-    tint: Color = Color.White,
-    modifier: Modifier = Modifier
-) {
-    Box(modifier.height(48.dp).clip(CircleShape).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center) {
-        Image(painterResource(icon), contentDescription = description,
-            colorFilter = ColorFilter.tint(tint),
-            modifier = Modifier.size(23.dp))
+private fun PlayerText(text: String, size: Int, color: Color = RavynStyle.text,
+    bold: Boolean = false, lines: Int = 1) = BasicText(text, maxLines = lines,
+    overflow = TextOverflow.Ellipsis, style = TextStyle(color = color, fontSize = size.sp,
+        fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal))
+
+@Composable
+private fun RavynPlayerIcon(@DrawableRes icon: Int, description: String, onClick: () -> Unit,
+    tint: Color = RavynStyle.text, modifier: Modifier = Modifier, state: String? = null) {
+    Box(modifier.size(48.dp).clip(CircleShape).semantics {
+        contentDescription = description
+        state?.let { stateDescription = it }
+    }.clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
+        Image(painterResource(icon), null, colorFilter = ColorFilter.tint(tint), modifier = Modifier.size(23.dp))
     }
 }
 
 @Composable
-private fun RavynPlayerCard(
-    label: String, @DrawableRes icon: Int, accent: Color,
-    highlighted: Boolean, onClick: () -> Unit
-) {
-    val line = Color.White.copy(alpha = 0.12f)
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(13.dp),
-        modifier = Modifier.fillMaxWidth().height(47.dp)
-            .border(width = 0.5.dp, color = line)
-            .background(Color(0xFF191B1D).copy(alpha = 0.42f))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp)
-    ) {
-        Image(painterResource(icon), contentDescription = null,
-            colorFilter = ColorFilter.tint(if (highlighted) accent else Color.White),
+private fun RavynPlayerCard(label: String, @DrawableRes icon: Int, accent: Color,
+    highlighted: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RavynStyle.radius)
+        .border(0.5.dp, Color.White.copy(alpha = 0.12f), RavynStyle.radius)
+        .background(RavynStyle.panel.copy(alpha = 0.7f))
+        .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Image(painterResource(icon), null, colorFilter = ColorFilter.tint(if (highlighted) accent else RavynStyle.text),
             modifier = Modifier.size(18.dp))
-        BasicText(label, modifier = Modifier.weight(1f),
-            style = TextStyle(
-                color = Color.White, fontSize = 11.sp,
-                fontWeight = FontWeight.Medium, letterSpacing = 0.45.sp
-            ))
-        Image(painterResource(R.drawable.chevron_forward), contentDescription = null,
-            colorFilter = ColorFilter.tint(Color(0xFFB4B8BA)),
-            modifier = Modifier.size(16.dp))
+        BasicText(label, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
+            style = TextStyle(color = RavynStyle.text, fontSize = 11.sp, fontWeight = FontWeight.Medium))
     }
 }
 
 @Composable
-private fun RavynTimestamp(value: Long, color: Color) {
+private fun RavynTimestamp(value: Long) {
     val seconds = value.coerceAtLeast(0L) / 1000L
-    val formatted = if (seconds >= 3600L) {
-        "%d:%02d:%02d".format(seconds / 3600L, (seconds / 60L) % 60L, seconds % 60L)
-    } else "%d:%02d".format(seconds / 60L, seconds % 60L)
-    BasicText(formatted,
-        style = TextStyle(color = color, fontSize = 12.sp))
+    val formatted = if (seconds >= 3600L) "%d:%02d:%02d".format(seconds / 3600L, seconds / 60L % 60L, seconds % 60L)
+        else "%d:%02d".format(seconds / 60L, seconds % 60L)
+    PlayerText(formatted, 12, RavynStyle.secondary)
 }

@@ -20,3 +20,7 @@ jniLibs/
 /.direnv
 /result*
 /repl-result*
+
+# Python bridge and contract tests
+__pycache__/
+*.pyc

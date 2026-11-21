@@ -32,7 +32,7 @@ fun HeaderIconButton(
         icon = icon,
         modifier = modifier,
         indication = indication,
-        enabled = true,
+        enabled = enabled,
         color = if (enabled) colorPalette.text else colorPalette.textDisabled
     )
 }
@@ -71,7 +71,7 @@ fun IconButton(
         icon = icon,
         modifier = modifier,
         indication = indication,
-        enabled = true,
+        enabled = enabled,
         color = if (enabled) colorPalette.text else colorPalette.textDisabled
     )
 }

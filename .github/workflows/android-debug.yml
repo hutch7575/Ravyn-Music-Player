@@ -43,6 +43,8 @@ jobs:
           fi
           "$SDKMANAGER" --list --channel=3 | grep -E "platforms;android-(37|CinnamonBun)|build-tools;37" || true
           "$SDKMANAGER" --channel=3 --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;29.0.14206865" "cmake;4.1.2"
+      - name: Test Python extraction contract
+        run: python -m unittest discover -s app/src/test/python -v
       - name: Build debug APK
         run: |
           chmod +x gradlew
@@ -53,4 +55,54 @@ jobs:
           name: Music-Player-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 14
+
+  device-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Install build dependencies
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;29.0.14206865" "cmake;4.1.2"
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test cache and responsive player on Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: |
+            chmod +x gradlew
+            adb shell wm size 1280x800
+            adb shell wm density 160
+            ./gradlew :app:connectedDebugAndroidTest --no-daemon --stacktrace
+      - name: Collect screenshots and logs
+        if: always()
+        run: |
+          mkdir -p device-results
+          adb pull /sdcard/Android/data/app.ravyn.music.debug/files/. device-results/ || true
+          adb logcat -d > device-results/logcat.txt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android-device-test-results
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+            device-results/
           retention-days: 14

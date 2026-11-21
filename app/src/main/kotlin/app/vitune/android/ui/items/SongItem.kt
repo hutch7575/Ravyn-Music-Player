@@ -87,7 +87,10 @@ fun SongItem(
         explicit = extras?.explicit == true,
         thumbnailSize = thumbnailSize,
         onThumbnailContent = onThumbnailContent,
-        trailingContent = trailingContent,
+        trailingContent = {
+            app.vitune.android.ui.components.themed.TrackAvailabilityBadge(song.mediaId)
+            trailingContent?.invoke()
+        },
         showDuration = showDuration,
         clip = clip,
         isPlaying = isPlaying,
@@ -117,7 +120,10 @@ fun SongItem(
     explicit = song.explicit,
     thumbnailSize = thumbnailSize,
     onThumbnailContent = onThumbnailContent,
-    trailingContent = trailingContent,
+    trailingContent = {
+        app.vitune.android.ui.components.themed.TrackAvailabilityBadge(song.id)
+        trailingContent?.invoke()
+    },
     showDuration = showDuration,
     clip = clip,
     isPlaying = isPlaying,

@@ -54,6 +54,9 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.coerceAtMost
@@ -138,22 +141,20 @@ fun Player(
         )
     }
     var shouldBePlaying by remember(binder) { mutableStateOf(binder?.player?.shouldBePlaying == true) }
-    var isCachedOffline by remember(binder) { mutableStateOf(false) }
-    fun refreshCacheStatus() {
-        val id = binder?.player?.currentMediaItem?.mediaId
-        isCachedOffline = if (id == null || binder == null) false else runCatching {
-            val length = ContentMetadata.getContentLength(binder.cache.getContentMetadata(id))
-            length > 0L && length != C.LENGTH_UNSET.toLong() && binder.cache.isCached(id, 0L, length)
-        }.getOrDefault(false)
-    }
-    LaunchedEffect(binder, mediaItem?.mediaId) {
-        while (true) {
-            refreshCacheStatus()
-            delay(5_000L)
-        }
-    }
+    val availability = app.vitune.android.utils.trackAvailability(mediaItem?.mediaId, binder)
+    val availabilityText = app.vitune.android.ui.components.themed.availabilityLabel(availability)
+
     var isBuffering by remember(binder) {
         mutableStateOf(binder?.player?.playbackState == Player.STATE_BUFFERING)
+    }
+
+    var showLoading by remember(binder, mediaItem?.mediaId) { mutableStateOf(false) }
+    LaunchedEffect(isBuffering, shouldBePlaying, mediaItem?.mediaId) {
+        showLoading = false
+        if (isBuffering && shouldBePlaying) {
+            delay(250L)
+            showLoading = true
+        }
     }
 
     var likedAt by remember(mediaItem) {
@@ -186,7 +187,6 @@ fun Player(
             override fun onMediaItemTransition(newMediaItem: MediaItem?, reason: Int) {
                 mediaItem = newMediaItem
                 isBuffering = player.playbackState == Player.STATE_BUFFERING
-                refreshCacheStatus()
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
@@ -196,7 +196,6 @@ fun Player(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 shouldBePlaying = player.shouldBePlaying
                 isBuffering = playbackState == Player.STATE_BUFFERING
-                refreshCacheStatus()
             }
         }
     }
@@ -308,14 +307,15 @@ fun Player(
                             ) {
                                 BasicText(
                                     text = text,
+                                    modifier = Modifier.weight(1f, fill = false),
                                     style = typography.xs.semiBold.secondary,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
 
-                                AnimatedVisibility(visible = isCachedOffline) {
+                                AnimatedVisibility(visible = availability != app.vitune.android.utils.TrackAvailability.NotCached) {
                                     BasicText(
-                                        text = "· OFFLINE",
+                                        text = availabilityText,
                                         style = typography.xs.secondary,
                                         maxLines = 1
                                     )
@@ -366,8 +366,13 @@ fun Player(
                                 interactionSource = remember { MutableInteractionSource() }
                             )
                             .clip(CircleShape)
+                            .size(48.dp)
+                            .semantics {
+                                contentDescription = if (shouldBePlaying) "Pause" else "Play"
+                                role = androidx.compose.ui.semantics.Role.Button
+                            }
                     ) {
-                        if (isBuffering && shouldBePlaying) {
+                        if (showLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier
                                     .align(Alignment.Center)
@@ -376,15 +381,14 @@ fun Player(
                                 color = colorPalette.accent,
                                 strokeWidth = 2.dp
                             )
-                        } else {
-                            AnimatedPlayPauseButton(
+                        }
+                        AnimatedPlayPauseButton(
                                 playing = shouldBePlaying,
                                 modifier = Modifier
                                     .align(Alignment.Center)
                                     .padding(horizontal = 4.dp, vertical = 8.dp)
-                                    .size(23.dp)
+                                    .size(if (showLoading) 16.dp else 23.dp)
                             )
-                        }
                     }
 
                     IconButton(
@@ -413,8 +417,7 @@ fun Player(
         // On portrait Ravyn has its own UP NEXT action. The legacy queue
         // button bar should be completely hidden, not reserve 64dp of space.
         val playerBottomSheetState = rememberBottomSheetState(
-            dismissedBound = if (isLandscape)
-                64.dp + horizontalBottomPaddingValues.calculateBottomPadding() else 0.dp,
+            dismissedBound = 0.dp,
             expandedBound = layoutState.expandedBound
         )
 
@@ -474,87 +477,10 @@ fun Player(
             }
         }
 
-        val controlsContent: @Composable (modifier: Modifier) -> Unit = { innerModifier ->
-            Controls(
-                media = mediaItem?.toUiMedia(duration),
-                binder = binder,
-                likedAt = likedAt,
-                setLikedAt = { likedAt = it },
-                shouldBePlaying = shouldBePlaying,
-                position = position,
-                modifier = innerModifier
-            )
-        }
-
         var audioDialogOpen by rememberSaveable { mutableStateOf(false) }
         var boostDialogOpen by rememberSaveable { mutableStateOf(false) }
 
-        if (isLandscape) Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-            modifier = Modifier
-                .clip(shape)
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color(0xFF18191A),
-                        1f to Color(0xFF111214)
-                    )
-                )
-                .padding(
-                    windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-                        .asPaddingValues()
-                )
-                .padding(horizontal = 24.dp, vertical = 12.dp)
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .weight(0.85f)
-                    .fillMaxHeight()
-                    .padding(vertical = 12.dp)
-            ) {
-                thumbnailContent(Modifier.fillMaxSize().clip(RoundedCornerShape(4.dp)))
-            }
-
-            Column(
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.weight(1f).fillMaxHeight()
-            ) {
-                BasicText(
-                    text = "NOW PLAYING",
-                    style = typography.xs.semiBold.secondary
-                )
-                Spacer(Modifier.height(8.dp))
-                BasicText(
-                    text = metadata?.title?.toString().orEmpty(),
-                    style = typography.m.semiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                BasicText(
-                    text = metadata?.artist?.toString().orEmpty() +
-                        if (isCachedOffline) "  ·  OFFLINE" else "",
-                    style = typography.xs.secondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (isBuffering && shouldBePlaying) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            color = colorPalette.accent,
-                            strokeWidth = 2.dp
-                        )
-                        BasicText("Loading audio…", style = typography.xs.secondary)
-                    }
-                }
-                controlsContent(Modifier.fillMaxWidth().weight(1f))
-            }
-        } else RavynNowPlaying(
+        RavynNowPlaying(
             media = mediaItem?.toUiMedia(duration),
             artworkAccent = artworkAccent,
             topInset = windowInsets.only(WindowInsetsSides.Top).asPaddingValues().calculateTopPadding(),
@@ -564,8 +490,8 @@ fun Player(
             likedAt = likedAt,
             setLikedAt = { likedAt = it },
             shouldBePlaying = shouldBePlaying,
-            isBuffering = isBuffering,
-            isCachedOffline = isCachedOffline,
+            isBuffering = showLoading,
+            availability = availability,
             position = position,
             onCollapse = layoutState::collapseSoft,
             onMore = {
@@ -593,7 +519,9 @@ fun Player(
                 },
             thumbnailContent = thumbnailContent,
             // Draw the artwork-derived backdrop behind the system status bar.
-            modifier = Modifier.clip(shape).fillMaxSize()
+            modifier = Modifier.clip(shape).fillMaxSize().padding(
+                windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom).asPaddingValues()
+            )
         )
 
         if (audioDialogOpen) SliderDialog(

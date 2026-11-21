@@ -97,7 +97,7 @@ internal fun RavynIcon(
     modifier: Modifier = Modifier, tint: Color = RavynStyle.text
 ) {
     Box(
-        modifier.size(42.dp).clip(CircleShape).clickable(onClick = onClick),
+        modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Image(painterResource(icon), description,
@@ -217,12 +217,13 @@ internal fun RavynTrackRow(
             RavynLabel(song.title, 12, bold = true)
             RavynLabel(song.artistsText.orEmpty(), 10, RavynStyle.secondary)
         }
+        app.vitune.android.ui.components.themed.TrackAvailabilityBadge(song.id)
         if (showHeart && onLike != null) {
             RavynIcon(
                 if (song.likedAt != null) R.drawable.heart else R.drawable.heart_outline,
                 if (song.likedAt != null) "Unlike" else "Like",
                 onLike, tint = if (song.likedAt != null) accent else RavynStyle.muted,
-                modifier = Modifier.size(35.dp)
+                modifier = Modifier.size(48.dp)
             )
         }
     }

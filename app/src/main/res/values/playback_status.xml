@@ -1,0 +1,9 @@
+<resources>
+    <string name="available_offline">Available offline</string>
+    <string name="partially_cached">Partially cached</string>
+    <string name="not_cached">Not cached</string>
+    <string name="local_audio">Local audio</string>
+    <string name="loading_audio">Loading audio…</string>
+    <string name="playback_stalled">Audio could not load. Check your connection and retry.</string>
+    <string name="retry_playback">Retry playback</string>
+</resources>

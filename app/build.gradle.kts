@@ -22,6 +22,8 @@ android {
     defaultConfig {
         applicationId = "app.ravyn.music"
 
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
         minSdk = 24
         targetSdk = 37
 
@@ -189,6 +191,12 @@ chaquopy {
 }
 
 dependencies {
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+
     coreLibraryDesugaring(libs.desugaring)
 
     implementation(projects.compose.persist)

@@ -144,7 +144,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapMerge
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -184,6 +184,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     private lateinit var cache: Cache
     private val streamUriCache = UriCache<String, Long?>()
     private var playbackRecoveryAttempts = 0
+    private var playbackFailure by mutableStateOf<String?>(null)
     private lateinit var player: ExoPlayer
 
     // A missing HTTP error does not imply the player is healthy: some stream
@@ -206,6 +207,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                 player.play()
             } else {
                 player.pause()
+                player.stop()
+                playbackFailure = id
             }
             return@Runnable
         }
@@ -299,7 +302,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
     private val mediaItemState = MutableStateFlow<MediaItem?>(null)
     private val isLikedState = mediaItemState
-        .flatMapMerge { item ->
+        .flatMapLatest { item ->
             item?.mediaId?.let {
                 Database
                     .likedAt(it)
@@ -475,7 +478,9 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     }
 
     override fun onPlaybackStateChanged(playbackState: Int) {
-        if (playbackState == Player.STATE_READY) playbackRecoveryAttempts = 0
+        if (playbackState == Player.STATE_READY) playbackFailure = null
+        // Keep the attempt budget for this track. A brief READY event followed
+        // by another stall must not create an unlimited recovery loop.
         monitorBuffering()
     }
 
@@ -495,6 +500,9 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
             cache.release()
 
             loudnessEnhancer?.release()
+            bassBoost?.release()
+            reverb?.release()
+            audioDeviceCallback?.let { audioManager?.unregisterAudioDeviceCallback(it) }
             preferenceUpdaterJob?.cancel()
 
             coroutineScope.cancel()
@@ -550,6 +558,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         stallHandler.removeCallbacks(stallCheck)
         playbackRecoveryAttempts = 0
+        playbackFailure = null
+        monitorBuffering()
         if (
             AppearancePreferences.hideExplicit &&
             mediaItem?.mediaMetadata?.extras?.songBundle?.explicit == true
@@ -585,6 +595,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
     override fun onPlayerError(error: PlaybackException) {
         super.onPlayerError(error)
 
+        val resumeAfterRecovery = player.playWhenReady
         val httpCode = error.findCause<InvalidResponseCodeException>()?.responseCode
         Log.e(TAG, "Playback error: mediaId=${player.currentMediaItem?.mediaId} " +
             "http=$httpCode code=${error.errorCodeName}", error)
@@ -614,7 +625,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
             playbackRecoveryAttempts++
             streamUriCache.clear()
             player.prepare()
-            player.play()
+            player.playWhenReady = resumeAfterRecovery
             return
         }
 
@@ -831,7 +842,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                         @Suppress("LoopWithTooManyJumpStatements")
                         do {
                             if (lastSegmentEnd < posMillis()) {
-                                yield()
+                                delay(500L)
                                 continue
                             }
 
@@ -849,7 +860,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
 
                             if (posMillis().milliseconds !in nextSegment.start..nextSegment.end) {
                                 // Player is not in the segment for some reason, maybe the user seeked in the meantime
-                                yield()
+                                delay(500L)
                                 continue
                             }
 
@@ -935,6 +946,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         }
         if (audioManager == null) audioManager = getSystemService<AudioManager>()
 
+        audioDeviceCallback?.let { audioManager?.unregisterAudioDeviceCallback(it) }
         audioDeviceCallback = object : AudioDeviceCallback() {
             private fun canPlayMusic(audioDeviceInfo: AudioDeviceInfo) =
                 audioDeviceInfo.isSink && (
@@ -1213,6 +1225,20 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
         val cache: Cache
             get() = this@PlayerService.cache
 
+        val playbackFailure: String?
+            get() = this@PlayerService.playbackFailure
+
+        fun retryPlayback() {
+            this@PlayerService.playbackFailure = null
+            playbackRecoveryAttempts = 0
+            streamUriCache.clear()
+            val position = player.currentPosition.coerceAtLeast(0L)
+            player.stop()
+            player.seekTo(position)
+            player.prepare()
+            player.play()
+        }
+
         val mediaSession
             get() = this@PlayerService.mediaSession
 
@@ -1454,6 +1480,8 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
             val mediaId = dataSpec.key?.removePrefix("https://youtube.com/watch?v=")
                 ?: error("A key must be set")
 
+            val keyedSpec = dataSpec.buildUpon().setKey(mediaId).build()
+
             // Only trust sizes verified by Media3's completed cache entries, not
             // yt-dlp's remote filesize. Reported CDN sizes may not match the
             // final stream, producing HTTP 416 errors near EOF or after seeking.
@@ -1466,12 +1494,12 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                 cache.isCached(mediaId, dataSpec.position, cachedLength)
 
             if (dataSpec.isLocal || isAlreadyCached) {
-                dataSpec
+                keyedSpec
             } else {
                 uriCache[mediaId]
                     ?.takeIf { System.currentTimeMillis() - it.createdAtMillis < 15 * 60_000L }
                     ?.let { cachedUri ->
-                    dataSpec.withUri(cachedUri.uri)
+                    keyedSpec.withUri(cachedUri.uri)
                 } ?: run {
                     // Only extraction is required to start the audio stream. The
                     // old implementation made up to four Innertube requests first,
@@ -1497,7 +1525,6 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                         ?.toLong()
                         ?.takeIf { it > 0L && extras?.durationText == null }
                         ?.let(DateUtils::formatElapsedTime)
-                        ?.removePrefix("0")
                     durationText?.let { extras?.durationText = it }
 
                     // Database writes are queued, never performed on the Media3
@@ -1527,7 +1554,7 @@ class PlayerService : InvincibleService(), Player.Listener, PlaybackStatsListene
                     // Preserve Media3's requested byte range and allow the HTTP
                     // response to determine the actual EOF. Synthetic fixed-size
                     // reads caused seek/end-of-track playback failures.
-                    dataSpec.withUri(uri)
+                    keyedSpec.withUri(uri)
                 }
             }
         }.handleUnknownErrors()
