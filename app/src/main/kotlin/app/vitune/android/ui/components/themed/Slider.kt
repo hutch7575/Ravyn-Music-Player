@@ -16,11 +16,13 @@ fun Slider(
     range: ClosedFloatingPointRange<Float>,
     modifier: Modifier = Modifier,
     @IntRange(from = 0) steps: Int = 0,
-    showTicks: Boolean = steps != 0
+    showTicks: Boolean = steps != 0,
+    enabled: Boolean = true
 ) {
     val (colorPalette) = LocalAppearance.current
 
     androidx.compose.material3.Slider(
+        enabled = enabled,
         value = state,
         onValueChange = setState,
         onValueChangeFinished = onSlideComplete,

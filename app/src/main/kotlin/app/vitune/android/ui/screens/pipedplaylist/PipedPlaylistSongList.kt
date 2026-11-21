@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -69,13 +71,19 @@ fun PipedPlaylistSongList(
         playlist?.videos?.mapNotNull { it.asMediaItem }?.toImmutableList()
     }
 
-    LaunchedEffect(Unit) {
-        playlist = withContext(Dispatchers.IO) {
-            Piped.playlist.songs(
-                session = session,
-                id = playlistId
-            )?.getOrNull()
-        }
+    var loading by remember(playlistId) { mutableStateOf(playlist == null) }
+    var failed by remember(playlistId) { mutableStateOf(false) }
+    var retry by remember(playlistId) { mutableIntStateOf(0) }
+    LaunchedEffect(playlistId, retry) {
+        loading = true
+        failed = false
+        try {
+            val page = withContext(Dispatchers.IO) {
+                Piped.playlist.songs(session = session, id = playlistId)?.getOrNull()
+            }
+            failed = page == null
+            if (page != null) playlist = page
+        } finally { loading = false }
     }
 
 
@@ -84,6 +92,7 @@ fun PipedPlaylistSongList(
         artwork = playlist?.thumbnailUrl?.toString(),
         media = mediaItems.orEmpty(),
         onBack = onBack,
+        loading = loading, failed = failed, onRetry = { retry++ },
         onPlay = { index ->
             binder?.stopRadio()
             binder?.player?.forcePlayAtIndex(mediaItems.orEmpty(), index)

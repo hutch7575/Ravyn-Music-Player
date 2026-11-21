@@ -21,6 +21,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -59,12 +62,12 @@ import coil3.compose.AsyncImage
  * the current album art; it is never hard-coded to a single green or purple.
  */
 internal object RavynStyle {
-    val background = Color(0xFF101113)
-    val panel = Color(0xFF1B1D1E)
-    val raised = Color(0xFF282B2D)
-    val text = Color(0xFFF7F7F7)
-    val secondary = Color(0xFFB8BCBD)
-    val muted = Color(0xFF8E9294)
+    val background: Color @Composable get() = LocalAppearance.current.colorPalette.background0
+    val panel: Color @Composable get() = LocalAppearance.current.colorPalette.background1
+    val raised: Color @Composable get() = LocalAppearance.current.colorPalette.background2
+    val text: Color @Composable get() = LocalAppearance.current.colorPalette.text
+    val secondary: Color @Composable get() = LocalAppearance.current.colorPalette.textSecondary
+    val muted: Color @Composable get() = LocalAppearance.current.colorPalette.textDisabled
     val radius = RoundedCornerShape(10.dp)
 }
 @Composable internal fun ravynAccent(): Color =
@@ -83,6 +86,7 @@ internal fun RavynLabel(
         text = value, modifier = modifier, maxLines = lines,
         overflow = TextOverflow.Ellipsis,
         style = TextStyle(
+            fontFamily = LocalAppearance.current.typography.xs.fontFamily,
             fontSize = size.sp,
             fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal,
             letterSpacing = if (size >= 22) (-0.4).sp else 0.sp,
@@ -154,13 +158,16 @@ internal fun RavynPill(value: String, selected: Boolean, onClick: () -> Unit) {
         tween(210), label = "Filter text"
     )
     Box(
-        Modifier
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .semantics { this.selected = selected }
             .border(0.7.dp, if (selected) accent.copy(alpha = .75f)
                 else Color.White.copy(alpha = .16f), CircleShape)
             .clip(CircleShape).background(bg)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 7.dp)
-    ) { RavynLabel(value, 11, fg, selected) }
+    ) { RavynLabel(value, 12, fg, selected) }
 }
 
 @Composable

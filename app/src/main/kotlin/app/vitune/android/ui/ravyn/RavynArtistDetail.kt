@@ -42,12 +42,16 @@ fun RavynArtistDetail(
     onBack: () -> Unit,
     onBookmark: () -> Unit,
     onSong: (Innertube.SongItem) -> Unit,
-    onAlbum: (String) -> Unit
+    onAlbum: (String) -> Unit,
+    loading: Boolean = false,
+    failed: Boolean = false,
+    onRetry: (() -> Unit)? = null
 ) {
     val accent = ravynAccent()
     val inset = LocalPlayerAwareWindowInsets.current
-        .only(WindowInsetsSides.Vertical).asPaddingValues()
+        .only(WindowInsetsSides.Vertical + WindowInsetsSides.Horizontal).asPaddingValues()
     Column(Modifier.fillMaxSize().background(RavynStyle.background)
+        .padding(start = inset.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr), end = inset.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr))
         .padding(top = inset.calculateTopPadding(),
             bottom = inset.calculateBottomPadding())) {
         Row(
@@ -79,6 +83,9 @@ fun RavynArtistDetail(
                     Spacer(Modifier.height(8.dp))
                     RavynLabel("ARTIST", 11, RavynStyle.secondary, bold = true)
                 }
+            }
+            if (loading || failed || artistPage == null) item {
+                RavynContentState(loading, failed, "No artist information available.", onRetry)
             }
             if (!artistPage?.songs.isNullOrEmpty()) item {
                 Column(Modifier.padding(horizontal = 18.dp)) {

@@ -108,17 +108,17 @@ fun isCached(
 @OptIn(UnstableApi::class)
 @kotlin.OptIn(ExperimentalCoroutinesApi::class)
 fun PlayerService.Binder.cachedSongs(sortBy: SongSortBy, sortOrder: SortOrder): Flow<List<Song>> =
-    Database.songsWithContentLength(sortBy, sortOrder).flatMapLatest { candidates ->
+    Database.songs(sortBy, sortOrder).flatMapLatest { candidates ->
         callbackFlow {
             val listener = object : Cache.Listener {
                 override fun onSpanAdded(cache: Cache, span: CacheSpan) { trySend(Unit) }
                 override fun onSpanRemoved(cache: Cache, span: CacheSpan) { trySend(Unit) }
                 override fun onSpanTouched(cache: Cache, oldSpan: CacheSpan, newSpan: CacheSpan) = Unit
             }
-            candidates.forEach { cache.addListener(it.song.id, listener) }
+            candidates.forEach { cache.addListener(it.id, listener) }
             trySend(Unit)
-            awaitClose { candidates.forEach { cache.removeListener(it.song.id, listener) } }
-        }.conflate().map { candidates.filter(::isCached).map { it.song } }
+            awaitClose { candidates.forEach { cache.removeListener(it.id, listener) } }
+        }.conflate().map { candidates.filter { cache.trackAvailability(it.id) == TrackAvailability.Offline } }
     }.distinctUntilChanged().flowOn(Dispatchers.IO)
 
 @OptIn(UnstableApi::class)

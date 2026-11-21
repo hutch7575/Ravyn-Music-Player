@@ -423,6 +423,13 @@ internal fun RavynClassicLibrary(
                             }
                             Spacer(Modifier.height(10.dp))
                         }
+                        if (playlists.isEmpty()) item {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(vertical = 24.dp)) {
+                                RavynLabel("No playlists yet", 15, bold = true)
+                                RavynLabel("Keep your favourite music together.", 13, RavynStyle.secondary)
+                                RavynPill("Create playlist", true, onCreate)
+                            }
+                        }
                         items(playlists, key = { it.id }) { playlist ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -454,6 +461,9 @@ internal fun RavynClassicLibrary(
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             RavynLabel("Your Artists", 22, bold = true)
                         }
+                        if (artists.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
+                            RavynLabel("Saved artists will appear here.", 13, RavynStyle.secondary, lines = 2)
+                        }
                         gridItems(artists, key = { it.id }) { artist ->
                             Column(horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(7.dp),
@@ -475,6 +485,9 @@ internal fun RavynClassicLibrary(
                     ) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             RavynLabel("Your Albums", 22, bold = true)
+                        }
+                        if (albums.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
+                            RavynLabel("Saved albums will appear here.", 13, RavynStyle.secondary, lines = 2)
                         }
                         gridItems(albums, key = { it.id }) { album ->
                             Column(verticalArrangement = Arrangement.spacedBy(6.dp),

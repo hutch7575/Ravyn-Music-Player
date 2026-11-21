@@ -7,6 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -71,59 +74,43 @@ fun AlbumScreen(browseId: String) {
 
     PersistMapCleanup(prefix = "album/$browseId/")
 
-    LaunchedEffect(Unit) {
-        Database
-            .albumSongs(browseId)
-            .distinctUntilChanged()
-            .combine(
-                Database
-                    .album(browseId)
-                    .distinctUntilChanged()
-                    .cancellable()
-            ) { currentSongs, currentAlbum ->
-                album = currentAlbum
-                songs = currentSongs.toImmutableList()
+    var loading by remember(browseId) { mutableStateOf(albumPage == null) }
+    var failed by remember(browseId) { mutableStateOf(false) }
+    var retry by remember(browseId) { mutableIntStateOf(0) }
 
-                withContext(Dispatchers.IO) {
-                    Innertube.albumPage(BrowseBody(browseId = browseId))
-                        ?.completed()
-                        ?.onSuccess { newAlbumPage ->
-                            albumPage = newAlbumPage
-
-                            transaction {
-                                Database.clearAlbum(browseId)
-
-                                Database.upsert(
-                                    album = Album(
-                                        id = browseId,
-                                        title = newAlbumPage.title,
-                                        description = newAlbumPage.description,
-                                        thumbnailUrl = newAlbumPage.thumbnail?.url,
-                                        year = newAlbumPage.year,
-                                        authorsText = newAlbumPage.authors
-                                            ?.joinToString("") { it.name.orEmpty() },
-                                        shareUrl = newAlbumPage.url,
-                                        timestamp = System.currentTimeMillis(),
-                                        bookmarkedAt = album?.bookmarkedAt,
-                                        otherInfo = newAlbumPage.otherInfo
-                                    ),
-                                    songAlbumMaps = newAlbumPage
-                                        .songsPage
-                                        ?.items
-                                        ?.map { it.asMediaItem }
-                                        ?.onEach { Database.insert(it) }
-                                        ?.mapIndexed { position, mediaItem ->
-                                            SongAlbumMap(
-                                                songId = mediaItem.mediaId,
-                                                albumId = browseId,
-                                                position = position
-                                            )
-                                        } ?: emptyList()
-                                )
-                            }
-                        }?.exceptionOrNull()?.printStackTrace()
+    LaunchedEffect(browseId) {
+        Database.albumSongs(browseId).distinctUntilChanged().collect { songs = it.toImmutableList() }
+    }
+    LaunchedEffect(browseId) {
+        Database.album(browseId).distinctUntilChanged().collect { album = it }
+    }
+    // Network requests must not run inside Room's observers: writes and likes
+    // invalidate those observers and used to trigger another full album fetch.
+    LaunchedEffect(browseId, retry) {
+        loading = true
+        failed = false
+        try {
+            val page = withContext(Dispatchers.IO) {
+                Innertube.albumPage(BrowseBody(browseId = browseId))?.completed()?.getOrNull()
+            }
+            if (page == null) failed = true else {
+                albumPage = page
+                transaction {
+                    Database.clearAlbum(browseId)
+                    Database.upsert(
+                        album = Album(id = browseId, title = page.title,
+                            description = page.description, thumbnailUrl = page.thumbnail?.url,
+                            year = page.year, authorsText = page.authors?.joinToString { it.name.orEmpty() },
+                            shareUrl = page.url, timestamp = System.currentTimeMillis(),
+                            bookmarkedAt = album?.bookmarkedAt, otherInfo = page.otherInfo),
+                        songAlbumMaps = page.songsPage?.items?.map { it.asMediaItem }
+                            ?.onEach { Database.insert(it) }?.mapIndexed { position, item ->
+                                SongAlbumMap(songId = item.mediaId, albumId = browseId, position = position)
+                            }.orEmpty()
+                    )
                 }
-            }.collect()
+            }
+        } finally { loading = false }
     }
 
     RouteHandler {
@@ -165,7 +152,8 @@ fun AlbumScreen(browseId: String) {
                         }
                     }
                 },
-                emptyMessage = "Loading album tracks..."
+                emptyMessage = "This album has no tracks.",
+                loading = loading, failed = failed, onRetry = { retry++ }
             )
         }
     }

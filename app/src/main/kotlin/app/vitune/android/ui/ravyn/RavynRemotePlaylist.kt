@@ -38,12 +38,16 @@ fun RavynRemotePlaylist(
     onPlay: (Int) -> Unit,
     onShuffle: () -> Unit,
     onImport: () -> Unit,
-    onEnqueue: () -> Unit
+    onEnqueue: () -> Unit,
+    loading: Boolean = false,
+    failed: Boolean = false,
+    onRetry: (() -> Unit)? = null
 ) {
     val accent = ravynAccent()
     val inset = LocalPlayerAwareWindowInsets.current
-        .only(WindowInsetsSides.Vertical).asPaddingValues()
+        .only(WindowInsetsSides.Vertical + WindowInsetsSides.Horizontal).asPaddingValues()
     Column(Modifier.fillMaxSize().background(RavynStyle.background)
+        .padding(start = inset.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr), end = inset.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr))
         .padding(top = inset.calculateTopPadding(), bottom = inset.calculateBottomPadding())) {
         Row(verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().height(60.dp)
@@ -82,7 +86,7 @@ fun RavynRemotePlaylist(
                 RavynSection("Songs", Modifier.padding(horizontal = 18.dp))
                 Spacer(Modifier.height(9.dp))
             }
-            itemsIndexed(songs, key = { _, song -> song.key }) { i, song ->
+            itemsIndexed(songs, key = { index, song -> "$index:${song.key}" }) { i, song ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -96,14 +100,14 @@ fun RavynRemotePlaylist(
                         RavynLabel(song.authors?.joinToString { it.name.orEmpty() }
                             .orEmpty(), 12, RavynStyle.secondary)
                     }
+                    app.vitune.android.ui.components.themed.TrackAvailabilityBadge(song.key)
                     Image(painterResource(R.drawable.play), "Play",
                         colorFilter = ColorFilter.tint(RavynStyle.secondary),
                         modifier = Modifier.size(19.dp))
                 }
             }
-            if (songs.isEmpty()) item {
-                RavynLabel("Loading playlist...", 13, RavynStyle.secondary,
-                    modifier = Modifier.padding(24.dp))
+            if (songs.isEmpty() || loading || failed) item {
+                RavynContentState(loading, failed, "This playlist has no songs.", onRetry)
             }
         }
     }
@@ -117,11 +121,15 @@ fun RavynMediaPlaylist(
     onBack: () -> Unit,
     onPlay: (Int) -> Unit,
     onShuffle: () -> Unit,
-    onQueue: () -> Unit
+    onQueue: () -> Unit,
+    loading: Boolean = false,
+    failed: Boolean = false,
+    onRetry: (() -> Unit)? = null
 ) {
     val insets = LocalPlayerAwareWindowInsets.current
-        .only(WindowInsetsSides.Vertical).asPaddingValues()
+        .only(WindowInsetsSides.Vertical + WindowInsetsSides.Horizontal).asPaddingValues()
     Column(Modifier.fillMaxSize().background(RavynStyle.background)
+        .padding(start = insets.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr), end = insets.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr))
         .padding(top = insets.calculateTopPadding(),
             bottom = insets.calculateBottomPadding())) {
         Row(verticalAlignment = Alignment.CenterVertically,
@@ -152,7 +160,7 @@ fun RavynMediaPlaylist(
                 RavynSection("Songs", Modifier.padding(horizontal = 18.dp))
                 Spacer(Modifier.height(10.dp))
             }
-            itemsIndexed(media, key = { _, item -> item.mediaId }) { index, item ->
+            itemsIndexed(media, key = { index, item -> "$index:${item.mediaId}" }) { index, item ->
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth().height(71.dp)
@@ -165,14 +173,14 @@ fun RavynMediaPlaylist(
                         RavynLabel(item.mediaMetadata.artist?.toString().orEmpty(),
                             12, RavynStyle.secondary)
                     }
+                    app.vitune.android.ui.components.themed.TrackAvailabilityBadge(item.mediaId)
                     Image(painterResource(R.drawable.play), "Play",
                         colorFilter = ColorFilter.tint(RavynStyle.secondary),
                         modifier = Modifier.size(19.dp))
                 }
             }
-            if (media.isEmpty()) item {
-                RavynLabel("Loading playlist...", 13, RavynStyle.secondary,
-                    modifier = Modifier.padding(20.dp))
+            if (media.isEmpty() || loading || failed) item {
+                RavynContentState(loading, failed, "This playlist has no songs.", onRetry)
             }
         }
     }

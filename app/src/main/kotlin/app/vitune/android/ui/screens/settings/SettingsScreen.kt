@@ -229,6 +229,7 @@ fun SliderSettingsEntry(
         range = range,
         steps = steps,
         showTicks = showTicks,
+        enabled = isEnabled,
         modifier = Modifier
             .height(36.dp)
             .alpha(if (isEnabled) 1f else 0.5f)

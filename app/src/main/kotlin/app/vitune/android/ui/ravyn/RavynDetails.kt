@@ -59,12 +59,16 @@ fun RavynCollectionDetail(
     onBookmark: (() -> Unit)? = null,
     onMenu: (() -> Unit)? = null,
     subnav: @Composable () -> Unit = {},
-    emptyMessage: String = "No songs here yet"
+    emptyMessage: String = "No songs here yet",
+    loading: Boolean = false,
+    failed: Boolean = false,
+    onRetry: (() -> Unit)? = null
 ) {
     val accent = ravynAccent()
     val insets = LocalPlayerAwareWindowInsets.current
-        .only(WindowInsetsSides.Vertical).asPaddingValues()
+        .only(WindowInsetsSides.Vertical + WindowInsetsSides.Horizontal).asPaddingValues()
     Column(Modifier.fillMaxSize().background(RavynStyle.background)
+        .padding(start = insets.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr), end = insets.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr))
         .padding(top = insets.calculateTopPadding(), bottom = insets.calculateBottomPadding())) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -104,7 +108,7 @@ fun RavynCollectionDetail(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier
                                 .background(RavynStyle.panel, RoundedCornerShape(4.dp))
-                                .clickable(onClick = onShuffle)
+                                .clickable(enabled = tracks.isNotEmpty(), onClick = onShuffle)
                                 .padding(horizontal = 18.dp, vertical = 13.dp)) {
                             Image(painterResource(R.drawable.shuffle), null,
                                 colorFilter = ColorFilter.tint(accent),
@@ -127,11 +131,10 @@ fun RavynCollectionDetail(
                 }
                 RavynSection("Songs", Modifier.padding(horizontal = 18.dp, vertical = 12.dp))
             }
-            if (tracks.isEmpty()) item {
-                RavynLabel(emptyMessage, 13, RavynStyle.secondary,
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 23.dp))
+            if (tracks.isEmpty() || loading || failed) item {
+                RavynContentState(loading, failed, emptyMessage, onRetry)
             }
-            itemsIndexed(tracks, key = { _, song -> song.id }) { index, song ->
+            itemsIndexed(tracks, key = { index, song -> "$index:${song.id}" }) { index, song ->
                 Box(Modifier.padding(horizontal = 18.dp)) {
                     RavynTrackRow(song, onClick = { onPlay(index) },
                         onLike = { onLike(song) })

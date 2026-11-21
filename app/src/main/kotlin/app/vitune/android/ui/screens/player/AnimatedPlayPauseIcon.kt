@@ -49,7 +49,7 @@ fun AnimatedPlayPauseButton(
         lottieCompositionResult = result,
         progress = progress,
         tint = colorPalette.text,
-        placeholder = if (playing) R.drawable.play else R.drawable.pause,
+        placeholder = if (playing) R.drawable.pause else R.drawable.play,
         modifier = modifier
     )
 }

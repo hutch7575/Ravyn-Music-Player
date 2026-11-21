@@ -40,7 +40,6 @@ fun Scaffold(
     val (colorPalette) = LocalAppearance.current
     var hiddenTabs by UIStatePreferences.mutableTabStateOf(key)
 
-    val showClassicHome = !isLandscape
     val tabContent: @Composable () -> Unit = {
         AnimatedContent(
             targetState = tabIndex,
@@ -56,7 +55,6 @@ fun Scaffold(
         )
     }
 
-    if (showClassicHome) {
         val tabs = TabsBuilder.rememberTabs(tabColumnContent)
         RavynHomeNavigation(
             tabs = tabs,
@@ -81,23 +79,5 @@ fun Scaffold(
             },
             content = tabContent
         )
-    } else {
-        Row(
-            modifier = modifier
-                .background(colorPalette.background0)
-                .fillMaxSize()
-        ) {
-            NavigationRail(
-                topIconButtonId = topIconButtonId,
-                onTopIconButtonClick = onTopIconButtonClick,
-                tabIndex = tabIndex,
-                onTabIndexChange = onTabChange,
-                hiddenTabs = hiddenTabs,
-                setHiddenTabs = { hiddenTabs = it.toImmutableList() },
-                tabsEditingTitle = tabsEditingTitle,
-                content = tabColumnContent
-            )
-            Box(Modifier.weight(1f)) { tabContent() }
-        }
-    }
+
 }

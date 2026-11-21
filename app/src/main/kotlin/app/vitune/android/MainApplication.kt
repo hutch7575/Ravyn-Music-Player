@@ -232,7 +232,21 @@ class MainActivity : ComponentActivity(), MonetColorsChangedListener {
                 LocalRavynNavigation provides ravynNavigation,
                 LocalMonetCompat provides monet
             ) {
-                content()
+                val palette = appearance.colorPalette
+                val scheme = if (palette.isDark) androidx.compose.material3.darkColorScheme()
+                    else androidx.compose.material3.lightColorScheme()
+                androidx.compose.material3.MaterialTheme(
+                    colorScheme = scheme.copy(
+                        primary = palette.accent, onPrimary = palette.onAccent,
+                        secondary = palette.accent, onSecondary = palette.onAccent,
+                        background = palette.background0, onBackground = palette.text,
+                        surface = palette.background1, onSurface = palette.text,
+                        surfaceVariant = palette.background2, onSurfaceVariant = palette.textSecondary,
+                        surfaceContainer = palette.background1,
+                        surfaceContainerHigh = palette.background2,
+                        error = palette.red
+                    )
+                ) { content() }
             }
         }
     }

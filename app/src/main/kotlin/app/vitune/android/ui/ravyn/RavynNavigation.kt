@@ -22,6 +22,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import app.vitune.android.R
@@ -69,7 +72,7 @@ private fun RavynNavigationDestination(
     )
     Column(horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = modifier.fillMaxHeight().clickable(onClick = onClick)) {
+        modifier = modifier.fillMaxHeight().semantics { selected = active }.clickable(role = Role.Tab, onClick = onClick)) {
         Image(painterResource(icon), contentDescription = label,
             colorFilter = ColorFilter.tint(tint), modifier = Modifier.size(20.dp))
         Spacer(Modifier.height(4.dp))

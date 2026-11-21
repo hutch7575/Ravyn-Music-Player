@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -80,18 +82,24 @@ fun PlaylistSongList(
 
     var playlistPage by persist<Innertube.PlaylistOrAlbumPage?>("playlist/$browseId/playlistPage")
 
-    LaunchedEffect(Unit) {
-        if (playlistPage != null && playlistPage?.songsPage?.continuation == null) return@LaunchedEffect
-
-        playlistPage = withContext(Dispatchers.IO) {
-            Innertube
-                .playlistPage(BrowseBody(browseId = browseId, params = params))
-                ?.completed(
-                    maxDepth = maxDepth ?: Int.MAX_VALUE,
-                    shouldDedup = shouldDedup
-                )
-                ?.getOrNull()
+    var loading by remember(browseId) { mutableStateOf(playlistPage == null) }
+    var failed by remember(browseId) { mutableStateOf(false) }
+    var retry by remember(browseId) { mutableIntStateOf(0) }
+    LaunchedEffect(browseId, retry) {
+        if (retry == 0 && playlistPage != null && playlistPage?.songsPage?.continuation == null) {
+            loading = false
+            return@LaunchedEffect
         }
+        loading = true
+        failed = false
+        try {
+            val page = withContext(Dispatchers.IO) {
+                Innertube.playlistPage(BrowseBody(browseId = browseId, params = params))
+                    ?.completed(maxDepth = maxDepth ?: Int.MAX_VALUE, shouldDedup = shouldDedup)?.getOrNull()
+            }
+            failed = page == null
+            if (page != null) playlistPage = page
+        } finally { loading = false }
     }
 
     var isImportingPlaylist by rememberSaveable { mutableStateOf(false) }
@@ -133,6 +141,7 @@ fun PlaylistSongList(
         artwork = playlistPage?.thumbnail?.url,
         songs = playlistPage?.songsPage?.items.orEmpty(),
         onBack = onBack,
+        loading = loading, failed = failed, onRetry = { retry++ },
         onPlay = { index ->
             val tracks = playlistPage?.songsPage?.items.orEmpty().map { it.asMediaItem }
             binder?.stopRadio()

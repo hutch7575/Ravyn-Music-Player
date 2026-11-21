@@ -134,7 +134,7 @@ android.buildTypes.configureEach {
     val variantName = name
     val capitalized = variantName.replaceFirstChar { it.uppercase() }
     val stagedDirectory = layout.buildDirectory.dir("generated/quickjs/$variantName")
-    android.sourceSets.getByName(variantName).jniLibs.srcDir(stagedDirectory)
+    android.sourceSets.getByName(variantName).jniLibs.srcDir(stagedDirectory.get().asFile)
     val stageQuickJs = tasks.register<Sync>("stage${capitalized}QuickJs") {
         dependsOn("externalNativeBuild$capitalized")
         from(layout.projectDirectory.dir(".cxx")) {

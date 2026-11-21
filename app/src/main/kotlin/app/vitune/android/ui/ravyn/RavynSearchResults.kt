@@ -61,9 +61,10 @@ fun RavynSearchResults(
 ) {
     var tab by rememberSaveable(query) { mutableStateOf(0) }
     val insets = LocalPlayerAwareWindowInsets.current
-        .only(WindowInsetsSides.Vertical).asPaddingValues()
+        .only(WindowInsetsSides.Vertical + WindowInsetsSides.Horizontal).asPaddingValues()
     val filters = listOf("Songs", "Albums", "Artists", "Videos", "Playlists")
     Column(Modifier.fillMaxSize().background(RavynStyle.background)
+        .padding(start = insets.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr), end = insets.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr))
         .padding(top = insets.calculateTopPadding(), bottom = insets.calculateBottomPadding())) {
         Row(verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().height(66.dp).padding(start = 4.dp, end = 15.dp)) {

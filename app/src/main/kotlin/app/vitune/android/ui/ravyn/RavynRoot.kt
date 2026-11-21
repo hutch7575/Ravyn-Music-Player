@@ -277,8 +277,9 @@ fun RavynRoot(
     )
 
     val insets = LocalPlayerAwareWindowInsets.current
-        .only(WindowInsetsSides.Vertical).asPaddingValues()
+        .only(WindowInsetsSides.Vertical + WindowInsetsSides.Horizontal).asPaddingValues()
     Column(Modifier.fillMaxSize().background(RavynStyle.background)
+        .padding(start = insets.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr), end = insets.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr))
         .padding(top = insets.calculateTopPadding())) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

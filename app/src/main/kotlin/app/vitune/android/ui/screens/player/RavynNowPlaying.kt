@@ -77,6 +77,7 @@ fun RavynNowPlaying(
     thumbnailContent: @Composable (Modifier) -> Unit,
     modifier: Modifier = Modifier
 ) = BoxWithConstraints(modifier.fillMaxSize()) {
+    val availableHeight = maxHeight
     val landscape = maxWidth > maxHeight
     val compact = maxHeight < 615.dp
     val animatedColor by animateColorAsState(artworkAccent, tween(500), label = "Artwork colour")
@@ -222,7 +223,7 @@ fun RavynNowPlaying(
                 if (side > 0.dp) thumbnailContent(Modifier.size(side).clip(RoundedCornerShape(5.dp)))
             }
             // Normally fits without scrolling; retains every action with large accessibility fonts.
-            Column(Modifier.heightIn(max = maxHeight - 48.dp - topInset)
+            Column(Modifier.heightIn(max = (availableHeight - 48.dp - topInset).coerceAtLeast(0.dp))
                 .verticalScroll(rememberScrollState()).padding(top = 10.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 8.dp)) {
                 songInfo(); progress(); transport(); actions(); failure()
@@ -246,7 +247,9 @@ fun RavynNowPlaying(
 @Composable
 private fun PlayerText(text: String, size: Int, color: Color = RavynStyle.text,
     bold: Boolean = false, lines: Int = 1) = BasicText(text, maxLines = lines,
-    overflow = TextOverflow.Ellipsis, style = TextStyle(color = color, fontSize = size.sp,
+    overflow = TextOverflow.Ellipsis, style = TextStyle(
+        fontFamily = app.vitune.core.ui.LocalAppearance.current.typography.xs.fontFamily,
+        color = color, fontSize = size.sp,
         fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal))
 
 @Composable

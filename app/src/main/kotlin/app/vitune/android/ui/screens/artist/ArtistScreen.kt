@@ -8,6 +8,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -70,35 +73,28 @@ fun ArtistScreen(browseId: String) {
 
     var artistPage by persist<Innertube.ArtistPage?>("artist/$browseId/artistPage")
 
-    LaunchedEffect(Unit) {
-        Database
-            .artist(browseId)
-            .combine(
-                flow = artistScreenTabIndexProperty.stateFlow.map { it != 4 },
-                transform = ::Pair
-            )
-            .distinctUntilChanged()
-            .collect { [currentArtist, mustFetch] ->
-                artist = currentArtist
-
-                if (artistPage == null && (currentArtist?.timestamp == null || mustFetch))
-                    withContext(Dispatchers.IO) {
-                        Innertube.artistPage(BrowseBody(browseId = browseId))
-                            ?.onSuccess { currentArtistPage ->
-                                artistPage = currentArtistPage
-
-                                Database.upsert(
-                                    Artist(
-                                        id = browseId,
-                                        name = currentArtistPage.name,
-                                        thumbnailUrl = currentArtistPage.thumbnail?.url,
-                                        timestamp = System.currentTimeMillis(),
-                                        bookmarkedAt = currentArtist?.bookmarkedAt
-                                    )
-                                )
-                            }
-                    }
+    var loading by remember(browseId) { mutableStateOf(artistPage == null) }
+    var failed by remember(browseId) { mutableStateOf(false) }
+    var retry by remember(browseId) { mutableIntStateOf(0) }
+    LaunchedEffect(browseId) {
+        Database.artist(browseId).distinctUntilChanged().collect { artist = it }
+    }
+    LaunchedEffect(browseId, retry) {
+        loading = true
+        failed = false
+        try {
+            val page = withContext(Dispatchers.IO) {
+                Innertube.artistPage(BrowseBody(browseId = browseId))?.getOrNull()
             }
+            if (page == null) failed = true else {
+                artistPage = page
+                query {
+                    Database.upsert(Artist(id = browseId, name = page.name,
+                        thumbnailUrl = page.thumbnail?.url, timestamp = System.currentTimeMillis(),
+                        bookmarkedAt = artist?.bookmarkedAt))
+                }
+            }
+        } finally { loading = false }
     }
 
     RouteHandler {
@@ -107,6 +103,7 @@ fun ArtistScreen(browseId: String) {
             app.vitune.android.ui.ravyn.RavynArtistDetail(
                 artist = artist,
                 artistPage = artistPage,
+                loading = loading, failed = failed, onRetry = { retry++ },
                 onBack = pop,
                 onAlbum = { albumRoute(it) },
                 onBookmark = {

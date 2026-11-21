@@ -107,7 +107,7 @@ fun RavynSearchPage(
     }
 
     val insets = LocalPlayerAwareWindowInsets.current
-        .only(WindowInsetsSides.Vertical).asPaddingValues()
+        .only(WindowInsetsSides.Vertical + WindowInsetsSides.Horizontal).asPaddingValues()
     Column(
         Modifier.fillMaxSize().background(RavynStyle.background)
             .padding(
